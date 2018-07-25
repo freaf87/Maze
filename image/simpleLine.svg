@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="81.288116mm"
+   height="161.54524mm"
+   viewBox="0 0 81.288117 161.54524"
+   version="1.1"
+   id="svg8"
+   inkscape:export-filename="/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze.png"
+   inkscape:export-xdpi="161.5"
+   inkscape:export-ydpi="161.5"
+   inkscape:version="0.92.2 (5c3e80d, 2017-08-06)"
+   sodipodi:docname="simpleLine.svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="1"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2"
+     inkscape:cx="100.97702"
+     inkscape:cy="465.39612"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:pagecheckerboard="true"
+     fit-margin-top="10"
+     fit-margin-left="10"
+     fit-margin-right="10"
+     fit-margin-bottom="10"
+     inkscape:window-width="1920"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-73.866205,-68.410864)">
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 90.623177,117.60584 -0.0501,-32.486184"
+       id="path883"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 90.574997,117.60562 47.820833,-0.0497"
+       id="path883-2"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 138.39583,117.55594 0.0497,47.82084"
+       id="path883-2-7"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 105.82547,143.34511 32.48617,-0.0501"
+       id="path883-0"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 138.44553,165.37678 -47.820843,0.0497"
+       id="path883-2-7-9"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 90.624687,165.42648 0.0497,47.82084"
+       id="path883-2-7-9-3"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+  </g>
+</svg>
