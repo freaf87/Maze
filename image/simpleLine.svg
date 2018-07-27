@@ -14,7 +14,7 @@
    viewBox="0 0 81.288117 161.54524"
    version="1.1"
    id="svg8"
-   inkscape:export-filename="/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze.png"
+   inkscape:export-filename="/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze2.png"
    inkscape:export-xdpi="161.5"
    inkscape:export-ydpi="161.5"
    inkscape:version="0.92.2 (5c3e80d, 2017-08-06)"
@@ -28,9 +28,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="2"
-     inkscape:cx="100.97702"
-     inkscape:cy="465.39612"
+     inkscape:zoom="2.8284271"
+     inkscape:cx="73.066167"
+     inkscape:cy="381.98934"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -52,7 +52,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -62,7 +62,7 @@
      id="layer1"
      transform="translate(-73.866205,-68.410864)">
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 90.623177,117.60584 -0.0501,-32.486184"
        id="path883"
        inkscape:connector-type="polyline"
@@ -70,7 +70,7 @@
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 90.574997,117.60562 47.820833,-0.0497"
        id="path883-2"
        inkscape:connector-type="polyline"
@@ -78,7 +78,7 @@
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 138.39583,117.55594 0.0497,47.82084"
        id="path883-2-7"
        inkscape:connector-type="polyline"
@@ -86,7 +86,7 @@
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 105.82547,143.34511 32.48617,-0.0501"
        id="path883-0"
        inkscape:connector-type="polyline"
@@ -94,7 +94,7 @@
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 138.44553,165.37678 -47.820843,0.0497"
        id="path883-2-7-9"
        inkscape:connector-type="polyline"
@@ -102,9 +102,17 @@
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:13.22916698;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="m 90.624687,165.42648 0.0497,47.82084"
        id="path883-2-7-9-3"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="78"
+       inkscape:export-ydpi="78" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.04543948;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="m 115.86501,165.23942 0.13989,-40.95863"
+       id="path883-2-3"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
        inkscape:export-xdpi="78"
