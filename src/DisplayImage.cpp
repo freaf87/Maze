@@ -11,22 +11,113 @@
 #include <vector>
 #include "types_c.h"
 #include "highgui_c.h"
-#include <cmath>
-
+#include <unordered_map>
+#include <vector>
+#include <limits>
+#include <algorithm>
+#include <math.h>
 
 #define MEAS_TIME 1
-#define DEBUG 0
+#define DEBUG 1
+#define PI 3.14159265
 
 using namespace cv;
 using namespace std;
 
+
+struct myclass {
+   bool operator() (Point pt1, Point pt2) { return (pt1.x < pt2.x);}
+} myobject;
+
 void thinning(const cv::Mat& src, cv::Mat& dst);
 void thinningIteration(cv::Mat& img, int iter);
-bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance);
-void dijkstra(int *graph, int src, int size);
-void printSolution(int dist[], int n);
-int minDistance(int dist[], bool sptSet[], int size);
+bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
 
+
+
+class Graph
+{
+   unordered_map<int, const unordered_map<int, int>> vertices;
+
+public:
+   void add_vertex(int name, const unordered_map<int, int>& edges)
+   {
+      // Insert the connected nodes in unordered map
+      vertices.insert(unordered_map<int, const unordered_map<int, int>>::value_type(name, edges));
+   }
+
+   vector<int> shortest_path(int start, int finish)
+          {
+      // Second arguments -> distances
+      // Find the smallest distance in the already in closed list and push it in -> previous
+      unordered_map<int, int> distances;
+      unordered_map<int, int> previous;
+      vector<int> nodes; // Open list
+      vector<int> path; // Closed list
+
+      auto comparator = [&] (int left, int right) { return distances[left] > distances[right]; };
+
+      for (auto& vertex : vertices)
+      {
+         if (vertex.first == start)
+         {
+            distances[vertex.first] = 0;
+         }
+         else
+         {
+            distances[vertex.first] = numeric_limits<int>::max();
+         }
+
+         nodes.push_back(vertex.first);
+         push_heap(begin(nodes), end(nodes), comparator);
+      }
+
+      while (!nodes.empty())
+      {
+         pop_heap(begin(nodes), end(nodes), comparator);
+         int smallest = nodes.back();
+         nodes.pop_back();
+#if 0
+         std::cout << "Open list: ";
+         for( std::vector<int>::const_iterator i = nodes.begin(); i != nodes.end(); ++i) std::cout << *i << ' ';
+         std::cout << std::endl;
+#endif
+         if (smallest == finish)
+         {
+            while (previous.find(smallest) != end(previous))
+            {
+               path.push_back(smallest);
+               smallest = previous[smallest];
+#if 0
+               std::cout << "Closed list: ";
+               for( std::vector<int>::const_iterator i = path.begin(); i != path.end(); ++i) std::cout << *i << ' ';
+               std::cout << std::endl;
+#endif
+            }
+
+            break;
+         }
+
+         if (distances[smallest] == numeric_limits<int>::max())
+         {
+            break;
+         }
+
+         for (auto& neighbor : vertices[smallest])
+         {
+            int alt = distances[smallest] + neighbor.second;
+            if (alt < distances[neighbor.first])
+            {
+               distances[neighbor.first] = alt;
+               previous[neighbor.first] = smallest;
+               make_heap(begin(nodes), end(nodes), comparator);
+            }
+         }
+      }
+
+      return path;
+   }
+};
 /* Global Variables */
 Mat src;
 
@@ -35,8 +126,8 @@ int main()
 #ifdef MEAS_TIME
    const int64 start = getTickCount();
 #endif
-   //namedWindow("sourceWindow", CV_WINDOW_AUTOSIZE );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze.png");
+   //namedWindow("sourceWindow", WINDOW_NORMAL );
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final.png");
    if (!src.data)
       return -1;
 
@@ -46,74 +137,107 @@ int main()
 
    /* Corner detection */
    std::vector< cv::Point2f > corners;
-   goodFeaturesToTrack(skel, corners, 500 , 0.01, 50, Mat(), 3 , false, 0.04);
+   goodFeaturesToTrack(skel, corners, 500 , 0.01, 10, Mat(), 3 , false, 0.04);
 #ifdef DEBUG
    cout << "** Number of corners detected: "<<corners.size()<<endl;
 #endif
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if !DEBUG
+#if DEBUG
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
       printf("Vertex %d: P(%d, %d)\n", (int)i, (int)corners[i].x, (int)corners[i].y);
 
 #else
-      circle( src, corners[i], 3, cv::Scalar( 255. ), -1 );
+      circle( src, corners[i], 2, cv::Scalar( 255. ), -1 );
 #endif
    }
 
-   imshow ("Original Image with labelled Corners",src);
-/* construct way Graph */
-   int  start_vertex;
+   imshow ("Original Image with labeled Corners",src);
 
-   int graph[(int)corners.size()][(int)corners.size()];
-   memset(graph, 0, sizeof graph);
-
-   start_vertex = 5;
-
-   for( int i = 0; i < (int)corners.size()-1; i++ )
-   {
-      for(int j = i+1; j < (int)corners.size(); j++)
-      {
-         int dist = 0;
-         isVertexConnected(skel,corners[i],corners[j],&dist);
-         graph[i][j] = (int)dist;
-         graph[j][i] = (int)dist;
-      }
-   }
-
-   dijkstra( (int*)graph, start_vertex, (int)corners.size());
-
+   resizeWindow("sourceWindow", 500, 500);
 #if DEBUG
    printf("max count = %d \n", (int)corners.size());
-#endif
-
-#if DEBUG
    imshow("Skeleton Image", skel );
 #endif
+
+   /* Initializing and Solving the Maze*/
+   int init_node = 8;
+   int dest_node = 61;
+
+   Graph g;
+   int seq = 0;
+
+   for( int i = 0; i < (int)corners.size(); i++ )
+   {
+      unordered_map<int, int> map;
+      for(int j = 0; j < (int)corners.size(); j++)
+      {
+         int dist = 0;
+         bool debug = false;
+
+         if(i==5 && j==1) debug = true;
+         else debug = false;
+         bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
+#if DEBUG
+         if(isCon == true) cout << i << " <--> " << j << endl;
+         else cout << i << " --- " << j << endl;
+#endif
+         if (dist > 0) map.insert({j,dist});
+      }
+#if 0
+      cout << "g.add_vertex(" << i << ", {" ;
+      for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
+      cout << "}" << endl;
+#endif
+      g.add_vertex(i,map);
+   }
+
+   cout << "As initial node: " << init_node << endl;
+   cout << "As goal node: " << dest_node << endl;
+
+   for (int vertex : g.shortest_path(init_node, dest_node))
+   {
+      cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
+      seq++;
+   }
+
+   cout << "Solution path from goal sequence : " << seq << " Node : " << init_node << endl;
+
+
 
 #ifdef MEAS_TIME
    const double timeSec = (getTickCount() - start) / getTickFrequency();
    cout << "CPU Time : " << timeSec * 1000 << " ms" << endl;
 #endif
 
+
    printf("Done !!");
+
+
    cv::waitKey();
    return 0;
 }
 
-bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance)
+bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug)
 {
-   static int i = 0;
-   // top left point, width, height
 
+   vector<cv::Point> Houghpts(2);
+   vector<cv::Point> Inputpts(2);
+   Inputpts[0] = vertex1;
+   Inputpts[1] = vertex2;
+
+   Point HoughP1, HoughP2;
+   float angleInputPts, angleHoughPts;
+
+   /* compute distance between original Vertex */
+   double Vertexdist = sqrt((vertex2.x - vertex1.x) * (vertex2.x - vertex1.x) + (vertex2.y - vertex1.y) * (vertex2.y - vertex1.y));
+
+   /* top left point, width, height */
    Rect croppedRect = Rect(min(vertex1.x, vertex2.x)-3, min(vertex1.y, vertex2.y)-3, (int)(abs(vertex1.x - vertex2.x))+6, (int)(abs(vertex1.y-vertex2.y))+6);
    Mat  croppedImage = m(croppedRect);
    rectangle(src, croppedRect, Scalar(0,0,255), 1);
-
-   char label[12];
-   sprintf(label, "%d", (int)i++);
 
 #if 0
    cout << "(" << vertex1.x << "," << vertex1.y << ")" << "   " << "(" << vertex2.x << "," << vertex2.y << ")" << endl;
@@ -124,21 +248,63 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance)
    Canny(croppedImage, dst, 50, 200, 3);
    cvtColor(dst, cdst, CV_GRAY2BGR);
    vector<Vec4i> lines;
-   HoughLinesP(dst, lines, 1, CV_PI/180, 50, 50, 10 );
+   HoughLinesP(dst, lines, 1, CV_PI/180, 10, (int)(Vertexdist*0.5), 4 );
+
+   if(debug)
+      imshow("Debug Image", cdst );
 
    double maxDistance = 0;
    for( size_t i = 0; i < lines.size(); i++ )
    {
       Vec4i l = lines[i];
-
       line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
-      maxDistance = max(maxDistance, sqrt((l[2] - l[0]) * (l[2] - l[0]) + (l[3] - l[1]) * (l[3] - l[1])));
+      double tmp = sqrt((l[2] - l[0]) * (l[2] - l[0]) + (l[3] - l[1]) * (l[3] - l[1]));
+
+      if(maxDistance <= tmp)
+      {
+         maxDistance = max(maxDistance, tmp);
+         /* Actualize HoughP1 and HoughP2 */
+         HoughP1.x = l[0];
+         HoughP1.y = l[1];
+         HoughP2.x = l[2];
+         HoughP2.y = l[3];
+      }
    }
 
-   /* compute distance between original Vertex */
-   double Vertexdist = sqrt((vertex2.x - vertex1.x) * (vertex2.x - vertex1.x) + (vertex2.y - vertex1.y) * (vertex2.y - vertex1.y));
+   Houghpts[0] = HoughP1;
+   Houghpts[1] = HoughP2;
 
-   if (abs(maxDistance - Vertexdist)/ Vertexdist < 0.08)
+   /* sort Point vectors. Smaller x coordinate first */
+   sort(Inputpts.begin(), Inputpts.end(), myobject);
+   sort(Houghpts.begin(), Houghpts.end(), myobject);
+
+   /* compute gradient of HoughLine and input Vertex */
+   float gradHough,gradInputPoint;
+
+   if((Houghpts[0].y -Houghpts[1].y) != 0 && (Houghpts[0].x -Houghpts[1].x) != 0) gradHough = (Houghpts[0].y -Houghpts[1].y)*1.0/(Houghpts[0].x -Houghpts[1].x)*1.0;
+   else if((Houghpts[0].y -Houghpts[1].y) == 0 && (Houghpts[0].x -Houghpts[1].x) != 0) gradHough = 0;
+   else if((Houghpts[0].y -Houghpts[1].y) != 0 && (Houghpts[0].x -Houghpts[1].x) == 0) gradHough = 1000000000000;
+   else gradHough = -1;
+
+   if((Inputpts[0].y -Inputpts[1].y) != 0 && (Inputpts[0].x -Inputpts[1].x) != 0) gradInputPoint = (Inputpts[0].y -Inputpts[1].y)*1.0/(Inputpts[0].x -Inputpts[1].x)*1.0;
+   else if((Inputpts[0].y -Inputpts[1].y) == 0 && (Inputpts[0].x -Inputpts[1].x) != 0) gradInputPoint = 0;
+   else if((Inputpts[0].y -Inputpts[1].y) != 0 && (Inputpts[0].x -Inputpts[1].x) == 0) gradInputPoint = 1000000000000;
+   else gradInputPoint = -1;
+
+   angleInputPts = atan(abs(gradInputPoint))* 180 / PI;
+   angleHoughPts = atan (abs(gradHough))* 180 / PI;
+
+
+#if DEBUG
+   cout << "__________________________________"<< endl;
+   cout << "Input Points: " << Inputpts[0] << "\t" << Inputpts[1] << endl;
+   cout << "Hough Points: " << Houghpts[0] << "\t" << Houghpts[1] << endl;
+   cout << "Angle:  " << angleInputPts <<  "\t" << angleHoughPts  << endl;
+   cout << "Vertexdist = " << Vertexdist << "\t" << "HoughDis = " << maxDistance << endl;
+   cout << "Distance error: " << abs(maxDistance - Vertexdist)/ Vertexdist << endl;
+#endif
+
+   if (abs(maxDistance - Vertexdist)/ Vertexdist < 0.15 &&  abs(angleHoughPts-angleInputPts) < (-0.0088*Vertexdist + 7.4))
    {
       *distance = (int)(Vertexdist);
       return true;
@@ -260,65 +426,3 @@ void thinning(const cv::Mat& src, cv::Mat& dst)
    dst *= 255;
 }
 
-// A utility function to find the vertex with minimum distance value, from
-// the set of vertices not yet included in shortest path tree
-int minDistance(int dist[], bool sptSet[], int size)
-{
-   // Initialize min value
-   int min = INT_MAX, min_index;
-
-   for (int v = 0; v < size; v++)
-     if (sptSet[v] == false && dist[v] <= min)
-         min = dist[v], min_index = v;
-
-   return min_index;
-}
-
-// A utility function to print the constructed distance array
-void printSolution(int dist[], int n)
-{
-   printf("Vertex   Distance from Source\n");
-   for (int i = 0; i < n; i++)
-      printf("%d tt %d\n", i, dist[i]);
-}
-
-// Function that implements Dijkstra's single source shortest path algorithm
-// for a graph represented using adjacency matrix representation
-void dijkstra(int *graph, int src, int size)
-{
-   int dist[size];     // The output array.  dist[i] will hold the shortest
-                     // distance from src to i
-
-    bool sptSet[size]; // sptSet[i] will true if vertex i is included in shortest
-                    // path tree or shortest distance from src to i is finalized
-
-    // Initialize all distances as INFINITE and stpSet[] as false
-    for (int i = 0; i < size; i++)
-       dist[i] = INT_MAX, sptSet[i] = false;
-
-    // Distance of source vertex from itself is always 0
-    dist[src] = 0;
-
-    // Find shortest path for all vertices
-    for (int count = 0; count < size-1; count++)
-    {
-      // Pick the minimum distance vertex from the set of vertices not
-      // yet processed. u is always equal to src in the first iteration.
-      int u = minDistance(dist, sptSet, size);
-
-      // Mark the picked vertex as processed
-      sptSet[u] = true;
-
-      // Update dist value of the adjacent vertices of the picked vertex.
-      for (int v = 0; v < size; v++)
-
-        // Update dist[v] only if is not in sptSet, there is an edge from
-        // u to v, and total weight of path from src to  v through u is
-        // smaller than current value of dist[v]
-        if (!sptSet[v] && graph[u*size+v] && dist[u] != INT_MAX
-                                      && dist[u]+graph[u*size+v] < dist[v])
-           dist[v] = dist[u] + graph[u*size+v];
-    }
-    // print the constructed distance array
-    printSolution(dist, size);
-}

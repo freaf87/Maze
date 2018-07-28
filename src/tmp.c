@@ -1,99 +1,140 @@
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include "types_c.h"
-#include "highgui_c.h"
+//
+//  main.cpp
+//  dijkstra
+//
+//  Created by Mahmut Bulut on 11/11/13.
+//  Copyright (c) 2013 Mahmut Bulut. All rights reserved.
+//
 
-using namespace cv;
+#include <unordered_map>
+#include <vector>
+#include <limits>
+#include <algorithm>
+#include <iostream>
+
 using namespace std;
 
-/// Global variables
-Mat src, src_gray;
-
-int maxCorners = 10;
-int maxTrackbar = 25;
-
-RNG rng(12345);
-char* source_window = "Image";
-
-/// Function header
-void goodFeaturesToTrack_Demo( int, void* );
-
-/** @function main */
-int main( int argc, char** argv )
+class Graph
 {
-  /// Load source image and convert it to gray
-  src = imread( argv[1], 1 );
-  cvtColor( src, src_gray, CV_BGR2GRAY );
+    unordered_map<char, const unordered_map<char, int>> vertices;
 
-  /// Create Window
-  namedWindow( source_window, CV_WINDOW_AUTOSIZE );
+public:
+    void add_vertex(char name, const unordered_map<char, int>& edges)
+    {
+        // Insert the connected nodes in unordered map
+        vertices.insert(unordered_map<char, const unordered_map<char, int>>::value_type(name, edges));
+    }
 
-  /// Create Trackbar to set the number of corners
-  createTrackbar( "Max  corners:", source_window, &maxCorners, maxTrackbar, goodFeaturesToTrack_Demo);
+    vector<char> shortest_path(char start, char finish)
+    {
+        // Second arguments -> distances
+        // Find the smallest distance in the already in closed list and push it in -> previous
+        unordered_map<char, int> distances;
+        unordered_map<char, char> previous;
+        vector<char> nodes; // Open list
+        vector<char> path; // Closed list
 
-  imshow( source_window, src );
+        auto comparator = [&] (char left, char right) { return distances[left] > distances[right]; };
 
-  goodFeaturesToTrack_Demo( 0, 0 );
+        for (auto& vertex : vertices)
+        {
+            if (vertex.first == start)
+            {
+                distances[vertex.first] = 0;
+            }
+            else
+            {
+                distances[vertex.first] = numeric_limits<int>::max();
+            }
 
-  waitKey(0);
-  return(0);
-}
+            nodes.push_back(vertex.first);
+            push_heap(begin(nodes), end(nodes), comparator);
+        }
 
-/**
- * @function goodFeaturesToTrack_Demo.cpp
- * @brief Apply Shi-Tomasi corner detector
- */
-void goodFeaturesToTrack_Demo( int, void* )
+        while (!nodes.empty())
+        {
+            pop_heap(begin(nodes), end(nodes), comparator);
+            char smallest = nodes.back();
+            nodes.pop_back();
+
+            std::cout << "Open list: ";
+            for( std::vector<char>::const_iterator i = nodes.begin(); i != nodes.end(); ++i)
+                std::cout << *i << ' ';
+            std::cout << std::endl;
+
+            if (smallest == finish)
+            {
+                while (previous.find(smallest) != end(previous))
+                {
+                    path.push_back(smallest);
+                    smallest = previous[smallest];
+                    std::cout << "Closed list: ";
+                    for( std::vector<char>::const_iterator i = path.begin(); i != path.end(); ++i)
+                        std::cout << *i << ' ';
+                    std::cout << std::endl;
+                }
+
+                break;
+            }
+
+            if (distances[smallest] == numeric_limits<int>::max())
+            {
+                break;
+            }
+
+            for (auto& neighbor : vertices[smallest])
+            {
+                int alt = distances[smallest] + neighbor.second;
+                if (alt < distances[neighbor.first])
+                {
+                    distances[neighbor.first] = alt;
+                    previous[neighbor.first] = smallest;
+                    make_heap(begin(nodes), end(nodes), comparator);
+                }
+            }
+        }
+
+        return path;
+    }
+};
+
+int main()
 {
-  if( maxCorners < 1 ) { maxCorners = 1; }
+    cout << "@author: Mahmut Bulut" << endl << endl;
+    int seq = 0;
+    char init_node = 'A';
+    char dest_node = 'H';
 
-  /// Parameters for Shi-Tomasi algorithm
-  vector<Point2f> corners;
-  double qualityLevel = 0.01;
-  double minDistance = 10;
-  int blockSize = 3;
-  bool useHarrisDetector = false;
-  double k = 0.04;
-
-  /// Copy the source image
-  Mat copy;
-  copy = src.clone();
-
-  /// Apply corner detection
-  goodFeaturesToTrack( src_gray,
-                       corners,
-                       maxCorners,
-                       qualityLevel,
-                       minDistance,
-                       Mat(),
-                       blockSize,
-                       useHarrisDetector,
-                       k );
+    Graph g;
+    /*g.add_vertex('A', {{'B', 1}, {'C', 4}, {'F', 2}});
+    g.add_vertex('B', {{'E', 2}});
+    g.add_vertex('C', {{'G', 2}, {'D', 4}});
+    g.add_vertex('D', {});
+    g.add_vertex('E', {{'D', 3}});
+    g.add_vertex('F', {{'C', 1}, {'G', 4}});
+    g.add_vertex('G', {{'E', 5}});*/
 
 
-  /// Draw corners detected
-  cout<<"** Number of corners detected: "<<corners.size()<<endl;
-  int r = 4;
-  for( int i = 0; i < corners.size(); i++ )
-     { circle( copy, corners[i], r, Scalar(rng.uniform(0,255), rng.uniform(0,255),
-                                                 rng.uniform(0,255)), -1, 8, 0 ); }
+    g.add_vertex('A', {{'B', 1}});
+    g.add_vertex('B', {{'C', 1}});
+    g.add_vertex('C', {{'D', 1}});
+    g.add_vertex('D', {{'E', 1}, {'F',1}});
+    g.add_vertex('E', {});
+    g.add_vertex('F', {{'G', 1}});
+    g.add_vertex('G', {{'H', 1}});
+    g.add_vertex('H', {});
 
-  /// Show what you got
-  namedWindow( source_window, CV_WINDOW_AUTOSIZE );
-  imshow( source_window, copy );
 
-  /// Set the neeed parameters to find the refined corners
-  Size winSize = Size( 5, 5 );
-  Size zeroZone = Size( -1, -1 );
-  TermCriteria criteria = TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 40, 0.001 );
+    cout << "As initial node: " << init_node << endl;
+    cout << "As goal node: " << dest_node << endl;
 
-  /// Calculate the refined corner locations
-  cornerSubPix( src_gray, corners, winSize, zeroZone, criteria );
+    for (char vertex : g.shortest_path(init_node, dest_node))
+    {
+        cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
+        seq++;
+    }
 
-  /// Write them down
-  for( int i = 0; i < corners.size(); i++ )
-     { cout<<" -- Refined Corner ["<<i<<"]  ("<<corners[i].x<<","<<corners[i].y<<")"<<endl; }
+    cout << "Solution path from goal sequence : " << seq << " Node : " << init_node << endl;
+
+    return 0;
 }
