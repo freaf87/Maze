@@ -1,9 +1,11 @@
-/**
- * Code for thinning a binary image using Zhang-Suen algorithm.
+
+/*
+ * DisplayImage.c
  *
- * Author:  Nash (nash [at] opencv-code [dot] com)
- * Website: http://opencv-code.com
+ *  Created on: Aug 2, 2018
+ *      Author: freaf87
  */
+#include "DisplayImage.h"
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -18,26 +20,30 @@
 #include <math.h>
 
 #define MEAS_TIME 1
-#define DEBUG 1
+#define DEBUG 0
 #define PI 3.14159265
 
 using namespace cv;
 using namespace std;
 
+struct SortXClass {
+   bool operator() (Point2f pt1, Point2f pt2) { return (pt1.x < pt2.x);}
+} sortXCoord;
 
-struct myclass {
-   bool operator() (Point pt1, Point pt2) { return (pt1.x < pt2.x);}
-} myobject;
+struct SortYClass {
+   bool operator() (Point2f pt1, Point2f pt2) { return (pt1.y < pt2.y);}
+} sortYCoord;
+
+
+
 
 void thinning(const cv::Mat& src, cv::Mat& dst);
 void thinningIteration(cv::Mat& img, int iter);
 bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
 
-
-
 class Graph
 {
-   unordered_map<int, const unordered_map<int, int>> vertices;
+   unordered_map<int, unordered_map<int, int>> vertices;
 
 public:
    void add_vertex(int name, const unordered_map<int, int>& edges)
@@ -46,8 +52,13 @@ public:
       vertices.insert(unordered_map<int, const unordered_map<int, int>>::value_type(name, edges));
    }
 
+   unordered_map<int, unordered_map<int, int>> getVertices(void)
+   {
+      return this->vertices;
+   }
+
    vector<int> shortest_path(int start, int finish)
-          {
+   {
       // Second arguments -> distances
       // Find the smallest distance in the already in closed list and push it in -> previous
       unordered_map<int, int> distances;
@@ -116,18 +127,24 @@ public:
       }
 
       return path;
-   }
+    }
 };
 /* Global Variables */
 Mat src;
 
 int main()
 {
+   /* Initializing and Solving the Maze*/
+   int init_node = 5;
+   int dest_node = 7;
+   Graph g;
+   int seq = 0;
+
 #ifdef MEAS_TIME
    const int64 start = getTickCount();
 #endif
    //namedWindow("sourceWindow", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze1.png");
    if (!src.data)
       return -1;
 
@@ -143,7 +160,7 @@ int main()
 #endif
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if DEBUG
+#if 1
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
@@ -162,13 +179,6 @@ int main()
    imshow("Skeleton Image", skel );
 #endif
 
-   /* Initializing and Solving the Maze*/
-   int init_node = 8;
-   int dest_node = 61;
-
-   Graph g;
-   int seq = 0;
-
    for( int i = 0; i < (int)corners.size(); i++ )
    {
       unordered_map<int, int> map;
@@ -176,17 +186,20 @@ int main()
       {
          int dist = 0;
          bool debug = false;
-
-         if(i==5 && j==1) debug = true;
+#if 0
+         if(i==0 && j==4) debug = true;
          else debug = false;
+#endif
+
          bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
+
 #if DEBUG
          if(isCon == true) cout << i << " <--> " << j << endl;
          else cout << i << " --- " << j << endl;
 #endif
          if (dist > 0) map.insert({j,dist});
       }
-#if 0
+#if 1
       cout << "g.add_vertex(" << i << ", {" ;
       for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
       cout << "}" << endl;
@@ -196,14 +209,100 @@ int main()
 
    cout << "As initial node: " << init_node << endl;
    cout << "As goal node: " << dest_node << endl;
+   cout << "Result: " << endl;
+   vector<int> FoundPATH = g.shortest_path(init_node, dest_node);
+   FoundPATH.push_back(init_node); /* Append last element to List */
 
-   for (int vertex : g.shortest_path(init_node, dest_node))
+   if(!FoundPATH.empty())
    {
-      cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
-      seq++;
+      for (int vertex : FoundPATH)
+      {
+         cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
+         seq++;
+      }
+   }
+   else
+   {
+      cout << "Path not found between vertex " << init_node << " and vertex " << dest_node << endl;
+      return -1;
    }
 
-   cout << "Solution path from goal sequence : " << seq << " Node : " << init_node << endl;
+
+   seq = 0;
+   for (int vertex : FoundPATH)
+   {
+      try
+      {
+         int nextVertex = FoundPATH.at(seq+1);
+         unordered_map<int, unordered_map<int, int>> ConnectionGraph;
+         ConnectionGraph = g.getVertices();
+         unordered_map<int, int>& map1 = ConnectionGraph[vertex];
+         unordered_map<int, int>& map2 = ConnectionGraph[nextVertex];
+
+#if 0
+         std::cout << "map1 contains:";
+          for ( auto it = map1.begin(); it != map1.end(); ++it )
+            std::cout << " " << it->first << ":" << it->second;
+          std::cout << std::endl;
+
+          std::cout << "map2 contains:";
+           for ( auto it = map2.begin(); it != map2.end(); ++it )
+             std::cout << " " << it->first << ":" << it->second;
+           std::cout << std::endl;
+           cout << "**********************************************" << endl;
+#endif
+
+           for ( auto it = map1.begin(); it != map1.end(); ++it )
+           {
+
+              if (map2.find(it->first) != map2.end())
+              {
+                 int direction;
+                 int CommonNode = it->first;
+                 vector<cv::Point> VertCoord(3);
+
+                 VertCoord[0] = corners[vertex];
+                 VertCoord[1] = corners[CommonNode];
+                 VertCoord[2] = corners[nextVertex];
+
+                 /* "3 eck-verbindung2" found. First find middle Point and decide if node is redundant or T-intersection */
+                 float XVals[] = {corners[vertex].x, corners[CommonNode].x, corners[nextVertex].x};
+                 float YVals[] = {corners[vertex].y, corners[CommonNode].y, corners[nextVertex].y};
+
+                 /* Get direction & sort to get mittelpunkt*/
+                 if( (((*std::max_element(XVals,XVals+3)) - (*std::max_element(XVals,XVals+3))) - ((*std::min_element(XVals,XVals+3)) - (*std::min_element(XVals,XVals+3))))
+                      > (((*std::max_element(YVals,YVals+3)) - (*std::max_element(YVals,YVals+3))) - ((*std::min_element(YVals,YVals+3)) - (*std::min_element(YVals,YVals+3))))
+                 )
+                 {
+                    direction = horizontal;
+
+                 }
+                 else
+                 {
+                    direction = vertical;
+                 }
+
+
+                 cout << vertex << " --> " << nextVertex << endl;
+                 cout << "Dir: " << direction << endl;
+                 cout << "**********************************************" << endl;
+
+              }
+              else
+              {
+                 /* Not found */
+              }
+
+           }
+
+         seq++;
+      } catch (std::out_of_range)
+      {
+         cout << "Last index reached..." << endl;
+      }
+   }
+
+
 
 
 
@@ -248,10 +347,11 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    Canny(croppedImage, dst, 50, 200, 3);
    cvtColor(dst, cdst, CV_GRAY2BGR);
    vector<Vec4i> lines;
-   HoughLinesP(dst, lines, 1, CV_PI/180, 10, (int)(Vertexdist*0.5), 4 );
-
+   HoughLinesP(dst, lines, 1, CV_PI/180, 10, (int)(Vertexdist*2/3), 4 );
+#if DEBUG
    if(debug)
       imshow("Debug Image", cdst );
+#endif
 
    double maxDistance = 0;
    for( size_t i = 0; i < lines.size(); i++ )
@@ -275,8 +375,8 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    Houghpts[1] = HoughP2;
 
    /* sort Point vectors. Smaller x coordinate first */
-   sort(Inputpts.begin(), Inputpts.end(), myobject);
-   sort(Houghpts.begin(), Houghpts.end(), myobject);
+   sort(Inputpts.begin(), Inputpts.end(), sortXCoord);
+   sort(Houghpts.begin(), Houghpts.end(), sortXCoord);
 
    /* compute gradient of HoughLine and input Vertex */
    float gradHough,gradInputPoint;
