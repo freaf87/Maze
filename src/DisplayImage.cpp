@@ -26,6 +26,7 @@
 using namespace cv;
 using namespace std;
 
+/* Sort Vectors helper class*/
 struct SortXClass {
    bool operator() (Point2f pt1, Point2f pt2) { return (pt1.x < pt2.x);}
 } sortXCoord;
@@ -34,7 +35,22 @@ struct SortYClass {
    bool operator() (Point2f pt1, Point2f pt2) { return (pt1.y < pt2.y);}
 } sortYCoord;
 
+/* Sort Maps helper class */
+// Declaring the type of Predicate that accepts 2 pairs and return a bool
+typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorX;
+// Defining a lambda function to compare two pairs. It will compare two pairs using second field
+ComparatorX compFunctorX = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
+{
+   return elem1.second.x < elem2.second.x;
+};
 
+// Declaring the type of Predicate that accepts 2 pairs and return a bool
+typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorY;
+// Defining a lambda function to compare two pairs. It will compare two pairs using second field
+ComparatorY compFunctorY = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
+{
+   return elem1.second.y < elem2.second.y;
+};
 
 
 void thinning(const cv::Mat& src, cv::Mat& dst);
@@ -55,6 +71,11 @@ public:
    unordered_map<int, unordered_map<int, int>> getVertices(void)
    {
       return this->vertices;
+   }
+
+   void setVertices(unordered_map<int, unordered_map<int, int>> vertices)
+   {
+      this->vertices = vertices;
    }
 
    vector<int> shortest_path(int start, int finish)
@@ -127,7 +148,8 @@ public:
       }
 
       return path;
-    }
+   }
+
 };
 /* Global Variables */
 Mat src;
@@ -135,7 +157,7 @@ Mat src;
 int main()
 {
    /* Initializing and Solving the Maze*/
-   int init_node = 5;
+   int init_node = 9;
    int dest_node = 7;
    Graph g;
    int seq = 0;
@@ -146,7 +168,10 @@ int main()
    //namedWindow("sourceWindow", WINDOW_NORMAL );
    src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze1.png");
    if (!src.data)
+   {
+      cout << "Input file not found !!!" << endl;
       return -1;
+   }
 
    Mat grayscale, skel;
    cvtColor(src, grayscale, CV_BGR2GRAY);
@@ -199,7 +224,7 @@ int main()
 #endif
          if (dist > 0) map.insert({j,dist});
       }
-#if 1
+#if DEBUG
       cout << "g.add_vertex(" << i << ", {" ;
       for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
       cout << "}" << endl;
@@ -207,102 +232,198 @@ int main()
       g.add_vertex(i,map);
    }
 
-   cout << "As initial node: " << init_node << endl;
-   cout << "As goal node: " << dest_node << endl;
-   cout << "Result: " << endl;
+   /* Search PATH */
    vector<int> FoundPATH = g.shortest_path(init_node, dest_node);
    FoundPATH.push_back(init_node); /* Append last element to List */
+   reverse(FoundPATH.begin(),FoundPATH.end()); /* improve readibility*/
 
-   if(!FoundPATH.empty())
-   {
-      for (int vertex : FoundPATH)
-      {
-         cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
-         seq++;
-      }
-   }
-   else
+   vector<int> FoundPATHResult = FoundPATH;
+   if(FoundPATH.empty())
    {
       cout << "Path not found between vertex " << init_node << " and vertex " << dest_node << endl;
       return -1;
    }
 
-
+   /* CLEAN UP GRAPH AND FOUNDPATH */
    seq = 0;
+   int offset = 0;
+   unordered_map<int, unordered_map<int, int>> ConnectionGraph;
+   ConnectionGraph = g.getVertices();
+
    for (int vertex : FoundPATH)
    {
       try
       {
+
          int nextVertex = FoundPATH.at(seq+1);
-         unordered_map<int, unordered_map<int, int>> ConnectionGraph;
-         ConnectionGraph = g.getVertices();
+
          unordered_map<int, int>& map1 = ConnectionGraph[vertex];
          unordered_map<int, int>& map2 = ConnectionGraph[nextVertex];
 
 #if 0
          std::cout << "map1 contains:";
-          for ( auto it = map1.begin(); it != map1.end(); ++it )
+         for ( auto it = map1.begin(); it != map1.end(); ++it )
             std::cout << " " << it->first << ":" << it->second;
-          std::cout << std::endl;
+         std::cout << std::endl;
 
-          std::cout << "map2 contains:";
-           for ( auto it = map2.begin(); it != map2.end(); ++it )
-             std::cout << " " << it->first << ":" << it->second;
-           std::cout << std::endl;
-           cout << "**********************************************" << endl;
+         std::cout << "map2 contains:";
+         for ( auto it = map2.begin(); it != map2.end(); ++it )
+            std::cout << " " << it->first << ":" << it->second;
+         std::cout << std::endl;
+         cout << "**********************************************" << endl;
 #endif
 
-           for ( auto it = map1.begin(); it != map1.end(); ++it )
-           {
+         for ( auto it = map1.begin(); it != map1.end(); ++it ) /* For all maps1 ' s elements */
+         {
+            if (map2.find(it->first) != map2.end()) /* Common Connection found */
+            {
+               //int direction;
+               int CommonNode = it->first;
+               int middlePoint;
+               map<int, Point2f> VertCoord;
+               VertCoord.insert(make_pair(vertex    , corners[vertex]    ));
+               VertCoord.insert(make_pair(CommonNode, corners[CommonNode]));
+               VertCoord.insert(make_pair(nextVertex, corners[nextVertex]));
 
-              if (map2.find(it->first) != map2.end())
-              {
-                 int direction;
-                 int CommonNode = it->first;
-                 vector<cv::Point> VertCoord(3);
+#if DEBUG
+                  cout << "Unsorted points in vertical direction: "<< endl;
+                  for (std::pair<int, Point2f> element : VertCoord)
+                     cout << element.first << " :: " << element.second << endl;
+#endif
 
-                 VertCoord[0] = corners[vertex];
-                 VertCoord[1] = corners[CommonNode];
-                 VertCoord[2] = corners[nextVertex];
-
-                 /* "3 eck-verbindung2" found. First find middle Point and decide if node is redundant or T-intersection */
-                 float XVals[] = {corners[vertex].x, corners[CommonNode].x, corners[nextVertex].x};
-                 float YVals[] = {corners[vertex].y, corners[CommonNode].y, corners[nextVertex].y};
-
-                 /* Get direction & sort to get mittelpunkt*/
-                 if( (((*std::max_element(XVals,XVals+3)) - (*std::max_element(XVals,XVals+3))) - ((*std::min_element(XVals,XVals+3)) - (*std::min_element(XVals,XVals+3))))
-                      > (((*std::max_element(YVals,YVals+3)) - (*std::max_element(YVals,YVals+3))) - ((*std::min_element(YVals,YVals+3)) - (*std::min_element(YVals,YVals+3))))
-                 )
-                 {
-                    direction = horizontal;
-
-                 }
-                 else
-                 {
-                    direction = vertical;
-                 }
+               /* "3 way connection" found. First find middle Point and decide if node is redundant or T-intersection */
+               float XVals[] = {corners[vertex].x, corners[CommonNode].x, corners[nextVertex].x};
+               float YVals[] = {corners[vertex].y, corners[CommonNode].y, corners[nextVertex].y};
 
 
-                 cout << vertex << " --> " << nextVertex << endl;
-                 cout << "Dir: " << direction << endl;
-                 cout << "**********************************************" << endl;
+               /* Get direction & sort to get middle point*/
+               if(   ((*std::max_element(XVals,XVals+3)) - ((*std::min_element(XVals,XVals+3))))
+                   > ((*std::max_element(YVals,YVals+3)) - ((*std::min_element(YVals,YVals+3))))
+               )
+               {
+                  //direction = horizontal;
+                  std::set<std::pair<int, Point2f>, ComparatorX> VertexXSort(VertCoord.begin(), VertCoord.end(), compFunctorX);
+                  //TODO: Find a better way to get middle element
+                  int count= 0;
+                  for (std::pair<int, Point2f> element : VertexXSort)
+                  {
+                     if (count == 1)
+                     {
+                        middlePoint = (int)element.first;
+                        break;
+                     }
+                     count++;
+                  }
+#if DEBUG
+                  cout << "Sorted point in horizontal direction: "<< endl;
+                  for (std::pair<int, Point2f> element : VertexXSort)
+                     cout << element.first << " :: " << element.second << endl;
 
-              }
-              else
-              {
-                 /* Not found */
-              }
+                  cout << "Middle point [" << middlePoint << "] will be used !!" << endl;
+#endif
 
-           }
+               }
+               else
+               {
+                  //direction = vertical;
+                  std::set<std::pair<int, Point2f>, ComparatorY> VertexYSort(
+                        VertCoord.begin(), VertCoord.end(), compFunctorY);
+                  //TODO: Find a better way to get middle element
+                  int count= 0;
+                  for (std::pair<int, Point2f> element : VertexYSort)
+                  {
+                     if (count == 1)
+                     {
+                        middlePoint = (int)element.first;
+                        break;
+                     }
+                     count++;
+                  }
+#if DEBUG
+                  cout << "Sorted point in vertical direction: "<< endl;
+                  for (std::pair<int, Point2f> element : VertexYSort)
+                     cout << element.first << " :: " << element.second << endl;
+
+                  cout << "Middle point [" << middlePoint << "] will be used !!" << endl;
+#endif
+               }
+
+
+               if (middlePoint == CommonNode) /* Continue processing only when both nodes are equal  to avoid double inclusion */
+               {
+                  unordered_map<int, int>& mapMiddlePoint = ConnectionGraph[middlePoint];
+
+                  if(mapMiddlePoint.size() <= 2)
+                  {
+                     /* 2 Neighbors:
+                      *    (1) delete in ConnectionGraph the key middlePoint and his Neighbors map
+                      *    (2) delete in connected Points (map1, map2) the element where middlePoint appears
+                      */
+
+#if 0
+                     std::cout << "map1 contains:";
+                     for ( auto it = map1.begin(); it != map1.end(); ++it )
+                        std::cout << " " << it->first << ":" << it->second;
+                     std::cout << std::endl;
+#endif
+                     ConnectionGraph.erase(middlePoint);
+                     map1.erase(middlePoint);
+                     map2.erase(middlePoint);
+                     FoundPATHResult.erase(std::remove(FoundPATHResult.begin(), FoundPATHResult.end(), middlePoint), FoundPATHResult.end());
+                     cout << "Erase " << middlePoint << "from FoundPATHResult" << endl;
+#if 0
+                     std::cout << "map1 now contains:";
+                     for ( auto it = map1.begin(); it != map1.end(); ++it )
+                        std::cout << " " << it->first << ":" << it->second;
+                     std::cout << std::endl;
+#endif
+                  }
+                  else
+                  {
+                     /* greather than 2 Neighbors:
+                      *    (1) Remove unwanted ConnectionGraph over map1 and map2
+                      *    (2) insert middlePoint between vertex and nextVertex in FoundPath since this is a valid intersection
+                      */
+                     map1.erase(nextVertex);
+                     map2.erase(vertex);
+                     cout << middlePoint << " inserted at " << seq << endl;
+                     FoundPATHResult.insert(FoundPATHResult.begin()+ (seq+1)+ offset, middlePoint);
+                     cout << "Inserting " << middlePoint << " in FoundPATHResult" << endl;
+                     offset++;
+                  }
+               }
+            }
+            else
+            {
+               /* Not found */
+            }
+
+         }
 
          seq++;
-      } catch (std::out_of_range)
+      }
+      catch (std::out_of_range &)
       {
          cout << "Last index reached..." << endl;
       }
+
    }
 
 
+   if(!FoundPATHResult.empty())
+   {
+      seq = 0;
+      cout << "RESULT: " << endl;
+      cout << "As initial node: " << init_node << endl;
+      cout << "As goal node: " << dest_node << endl;
+
+
+      for (int vertex : FoundPATHResult)
+      {
+         cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
+         seq++;
+      }
+   }
 
 
 
@@ -518,6 +639,7 @@ void thinning(const cv::Mat& src, cv::Mat& dst)
    do {
       thinningIteration(dst, 0);
       thinningIteration(dst, 1);
+
       cv::absdiff(dst, prev, diff);
       dst.copyTo(prev);
    }
