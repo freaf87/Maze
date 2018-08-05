@@ -20,7 +20,7 @@
 #include <math.h>
 
 #define MEAS_TIME 1
-#define DEBUG 1
+#define DEBUG 0
 #define PI 3.14159265
 
 using namespace cv;
@@ -52,11 +52,6 @@ ComparatorY compFunctorY = [](std::pair<int, Point2f> elem1 ,std::pair<int, Poin
       {
    return elem1.second.y < elem2.second.y;
       };
-
-
-void thinning(const cv::Mat& src, cv::Mat& dst);
-void thinningIteration(cv::Mat& img, int iter);
-bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
 
 class Graph
 {
@@ -206,97 +201,10 @@ public:
 
 };
 
-CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
-{
-   CoordToTrack Coordinates;
-   Mat hsv_image;
-   Point2f startVertex, endVertex;
-
-   /* Convert input image to HSV */
-   cvtColor(bgr_image, hsv_image, cv::COLOR_BGR2HSV);
-
-   /* Threshold the HSV image, keep only the red pixels */
-   Mat red_hue_image, green_hue_image, hue_image;
-
-   inRange(hsv_image, cv::Scalar(60, 100, 100), cv::Scalar(120, 255, 255), green_hue_image);
-   inRange(hsv_image, cv::Scalar(0 , 100, 100), cv::Scalar(10, 255, 255), red_hue_image);
-
-
-   // Combine the above two images
-   cv::addWeighted(red_hue_image, 1.0, green_hue_image, 1.0, 0.0, hue_image);
-
-
-   imshow("Tmp", red_hue_image) ;
-   GaussianBlur(hue_image, hue_image, cv::Size(9, 9), 2, 2);
-
-   /* Use the Hough transform to detect circles in the combined threshold image */
-   vector<cv::Vec3f> circles;
-   HoughCircles(hue_image, circles, CV_HOUGH_GRADIENT, 1, hue_image.rows/8, 100, 20, 0, 0);
-
-   if((circles.size() == 0) || (circles.size() > 2))
-   {
-      Coordinates.setError (true);
-   }
-   else
-   {
-      for(size_t current_circle = 0; current_circle < circles.size(); ++current_circle)
-      {
-         cv::Point center(std::round(circles[current_circle][0]), std::round(circles[current_circle][1]));
-
-         //int radius = std::round(circles[current_circle][2]);
-         //circle(bgr_image, center, radius, cv::Scalar(100, 20, 50), 2);
-         char label[12];
-
-         Vec3b color = bgr_image.at<Vec3b>(center);
-         /* BGR*/
-         if (color[2] == 255) //#TODO: Find a better way
-         {
-            /* Start Point */
-            sprintf(label, "%s", "Start Point");
-            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
-            Coordinates.setStartCoord(center);
-            startVertex = center;
-         }
-         else if (color[1] == 255) //#TODO: FInd a better way
-         {
-            /* End Point */
-            sprintf(label, "%s", "End Point");
-            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
-            Coordinates.setEndCoord(center);
-            endVertex = center;
-
-         }
-         else { /* pass*/}
-
-         double minDistStart=0xFFFFFFFFF;
-         double minDistEnd=0xFFFFFFFFF;
-
-         for( unsigned int i = 0; i < corners.size(); i++ ){
-            double tmpStart, tmpEnd;
-
-            double VertexdistStart = sqrt((startVertex.x - corners[i].x) * (startVertex.x - corners[i].x) + (startVertex.y - corners[i].y) * (startVertex.y - corners[i].y));
-            tmpStart = min(minDistStart, VertexdistStart);
-            if(tmpStart < minDistStart)
-            {
-               Coordinates.setStartVertex(i);
-               minDistStart = tmpStart;
-            }
-
-            double VertexdistEnd = sqrt((endVertex.x - corners[i].x) * (endVertex.x - corners[i].x) + (endVertex.y - corners[i].y) * (endVertex.y - corners[i].y));
-            tmpEnd = min(minDistEnd, VertexdistEnd);
-            if(tmpEnd < minDistEnd)
-            {
-               Coordinates.setEndVertex(i);
-               minDistEnd = tmpEnd;
-            }
-         }
-
-
-      }
-   }
-   return Coordinates;
-
-}
+CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners);
+void thinning(const cv::Mat& src, cv::Mat& dst);
+void thinningIteration(cv::Mat& img, int iter);
+bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
 
 /* Global Variables */
 Mat src;
@@ -311,17 +219,14 @@ int main()
 #ifdef MEAS_TIME
    const int64 start = getTickCount();
 #endif
-   //namedWindow("sourceWindow", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze2.png");
+   namedWindow( "Original Image with labeled Corners", WINDOW_NORMAL );
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
       return -1;
    }
 
-
-
-#if 1
    Mat grayscale, skel;
    cvtColor(src, grayscale, CV_BGR2GRAY);
    thinning(grayscale, skel);
@@ -332,9 +237,10 @@ int main()
 
 
    StartEndCoordinates = findStartEndCoord(src, corners);
+
+
    int init_node = StartEndCoordinates.getStartVertex();
    int dest_node = StartEndCoordinates.getEndVertex();
-   cout << "Start: "<< StartEndCoordinates.getStartCoord() << " End: " << StartEndCoordinates.getEndCoord() << endl;
 
 
 #ifdef DEBUG
@@ -342,7 +248,7 @@ int main()
 #endif
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if DEBUG
+#if !DEBUG
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
@@ -354,8 +260,8 @@ int main()
    }
 
    imshow ("Original Image with labeled Corners",src);
+   resizeWindow("Original Image with labeled Corners", 900, 900);
 
-   resizeWindow("sourceWindow", 500, 500);
 #if DEBUG
    printf("max count = %d \n", (int)corners.size());
    imshow("Skeleton Image", skel );
@@ -363,13 +269,17 @@ int main()
 
    for( int i = 0; i < (int)corners.size(); i++ )
    {
+
       unordered_map<int, int> map;
       for(int j = 0; j < (int)corners.size(); j++)
       {
+#if !DEBUG
+      cout << "Processing: " << i << " of " << j << endl;
+#endif
          int dist = 0;
          bool debug = false;
 #if 0
-         if(i==0 && j==4) debug = true;
+         if(i==3 && j==5) debug = true;
          else debug = false;
 #endif
 
@@ -567,19 +477,33 @@ int main()
    }
 
 
-   if(!FoundPATHResult.empty())
+   //if(!FoundPATHResult.empty())
+   if(FoundPATHResult.size() > 1)
    {
       seq = 0;
       cout << "RESULT: " << endl;
       cout << "As initial node: " << init_node << endl;
       cout << "As goal node: " << dest_node << endl;
 
-
+#if 1
+      cout << "Original:" << endl;
+      for (int vertex : FoundPATH)
+           {
+              cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
+              seq++;
+           }
+      seq = 0;
+#endif
+      cout << "Modified:" << endl;
       for (int vertex : FoundPATHResult)
       {
          cout << "Solution path from goal sequence : " << seq << " Node : " << vertex << endl;
          seq++;
       }
+   }
+   else
+   {
+      cout << "PATH FROM " << init_node << " and " << dest_node << " NOT FOUND !!" << endl;
    }
 
 
@@ -589,7 +513,6 @@ int main()
    cout << "CPU Time : " << timeSec * 1000 << " ms" << endl;
 #endif
 
-#endif
    printf("Done !!");
 
 
@@ -612,30 +535,41 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    double Vertexdist = sqrt((vertex2.x - vertex1.x) * (vertex2.x - vertex1.x) + (vertex2.y - vertex1.y) * (vertex2.y - vertex1.y));
 
    /* top left point, width, height */
-   Rect croppedRect = Rect(min(vertex1.x, vertex2.x)-3, min(vertex1.y, vertex2.y)-3, (int)(abs(vertex1.x - vertex2.x))+6, (int)(abs(vertex1.y-vertex2.y))+6);
+   int RectOffset = 5;
+   Rect croppedRect = Rect(min(vertex1.x, vertex2.x)-RectOffset, min(vertex1.y, vertex2.y)-RectOffset, (int)(abs(vertex1.x - vertex2.x))+2*RectOffset, (int)(abs(vertex1.y-vertex2.y))+2*RectOffset);
    Mat  croppedImage = m(croppedRect);
-   rectangle(src, croppedRect, Scalar(0,0,255), 1);
+
 
 #if 0
    cout << "(" << vertex1.x << "," << vertex1.y << ")" << "   " << "(" << vertex2.x << "," << vertex2.y << ")" << endl;
    cout << croppedRect.x << " " << croppedRect.y <<" " << croppedRect.width << " " << croppedRect.height << endl;
 #endif
 
-   Mat dst, cdst;
+   Mat dst, cdst, dilation, erosion;
    Canny(croppedImage, dst, 50, 200, 3);
-   cvtColor(dst, cdst, CV_GRAY2BGR);
+
+
+   // Rework Canny in order to get single line
+   Mat kernel = getStructuringElement( MORPH_ELLIPSE, Size( 4, 4 ) );
+   dilate(dst, dilation, kernel);
+   Mat kernel1 = getStructuringElement( MORPH_ELLIPSE, Size( 5, 5 ) );
+   erode(dilation, erosion, kernel1);
+
+   cvtColor(erosion, cdst, CV_GRAY2BGR);
+
    vector<Vec4i> lines;
-   HoughLinesP(dst, lines, 1, CV_PI/180, 10, (int)(Vertexdist*2/3), 4 );
-#if DEBUG
-   if(debug)
-      imshow("Debug Image", cdst );
-#endif
+   HoughLinesP(erosion, lines, 1, CV_PI/30, 15, (int)(Vertexdist*2/3), 4);
+
+
 
    double maxDistance = 0;
    for( size_t i = 0; i < lines.size(); i++ )
    {
       Vec4i l = lines[i];
-      line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+      if(debug)
+      {
+         line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 1, CV_AA);
+      }
       double tmp = sqrt((l[2] - l[0]) * (l[2] - l[0]) + (l[3] - l[1]) * (l[3] - l[1]));
 
       if(maxDistance <= tmp)
@@ -649,6 +583,13 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
       }
    }
 
+#if 1
+   if(debug)
+   {
+      imshow("Debug Image", erosion );
+      imshow("Debug Image(cdst)", cdst );
+   }
+#endif
    Houghpts[0] = HoughP1;
    Houghpts[1] = HoughP2;
 
@@ -682,7 +623,7 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    cout << "Distance error: " << abs(maxDistance - Vertexdist)/ Vertexdist << endl;
 #endif
 
-   if (abs(maxDistance - Vertexdist)/ Vertexdist < 0.15 &&  abs(angleHoughPts-angleInputPts) < (-0.0088*Vertexdist + 7.4))
+   if ( abs(maxDistance - Vertexdist)/ Vertexdist < 0.09 &&  abs(angleHoughPts-angleInputPts) < (-0.0088*Vertexdist + 7.4))
    {
       *distance = (int)(Vertexdist);
       return true;
@@ -803,5 +744,95 @@ void thinning(const cv::Mat& src, cv::Mat& dst)
    while (cv::countNonZero(diff) > 0);
 
    dst *= 255;
+}
+
+CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
+{
+   CoordToTrack Coordinates;
+   Mat hsv_image;
+   Point2f startVertex, endVertex;
+
+   /* Convert input image to HSV */
+   cvtColor(bgr_image, hsv_image, cv::COLOR_BGR2HSV);
+
+   /* Threshold the HSV image, keep only the red pixels */
+   Mat red_hue_image, green_hue_image, hue_image;
+
+   inRange(hsv_image, cv::Scalar(60, 100, 100), cv::Scalar(120, 255, 255), green_hue_image);
+   inRange(hsv_image, cv::Scalar(0 , 100, 100), cv::Scalar(10, 255, 255), red_hue_image);
+
+
+   // Combine the above two images
+   cv::addWeighted(red_hue_image, 1.0, green_hue_image, 1.0, 0.0, hue_image);
+
+   GaussianBlur(hue_image, hue_image, cv::Size(9, 9), 2, 2);
+
+   /* Use the Hough transform to detect circles in the combined threshold image */
+   vector<cv::Vec3f> circles;
+   HoughCircles(hue_image, circles, CV_HOUGH_GRADIENT, 1, hue_image.rows/8, 100, 20, 0, 0);
+
+   if((circles.size() == 0) || (circles.size() > 2))
+   {
+      Coordinates.setError (true);
+   }
+   else
+   {
+      for(size_t current_circle = 0; current_circle < circles.size(); ++current_circle)
+      {
+         cv::Point center(std::round(circles[current_circle][0]), std::round(circles[current_circle][1]));
+
+         //int radius = std::round(circles[current_circle][2]);
+         //circle(bgr_image, center, radius, cv::Scalar(100, 20, 50), 2);
+         char label[12];
+
+         Vec3b color = bgr_image.at<Vec3b>(center);
+         /* BGR*/
+         if (color[2] == 255) //#TODO: Find a better way
+         {
+            /* Start Point */
+            sprintf(label, "%s", "Start Point");
+            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
+            Coordinates.setStartCoord(center);
+            startVertex = center;
+         }
+         else if (color[1] == 255) //#TODO: FInd a better way
+         {
+            /* End Point */
+            sprintf(label, "%s", "End Point");
+            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
+            Coordinates.setEndCoord(center);
+            endVertex = center;
+
+         }
+         else { /* pass*/}
+
+         double minDistStart=0xFFFFFFFFF;
+         double minDistEnd=0xFFFFFFFFF;
+
+         for( unsigned int i = 0; i < corners.size(); i++ ){
+            double tmpStart, tmpEnd;
+
+            double VertexdistStart = sqrt((startVertex.x - corners[i].x) * (startVertex.x - corners[i].x) + (startVertex.y - corners[i].y) * (startVertex.y - corners[i].y));
+            tmpStart = min(minDistStart, VertexdistStart);
+            if(tmpStart < minDistStart)
+            {
+               Coordinates.setStartVertex(i);
+               minDistStart = tmpStart;
+            }
+
+            double VertexdistEnd = sqrt((endVertex.x - corners[i].x) * (endVertex.x - corners[i].x) + (endVertex.y - corners[i].y) * (endVertex.y - corners[i].y));
+            tmpEnd = min(minDistEnd, VertexdistEnd);
+            if(tmpEnd < minDistEnd)
+            {
+               Coordinates.setEndVertex(i);
+               minDistEnd = tmpEnd;
+            }
+         }
+
+
+      }
+   }
+   return Coordinates;
+
 }
 
