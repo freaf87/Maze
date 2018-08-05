@@ -28,9 +28,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.8284271"
-     inkscape:cx="73.066167"
-     inkscape:cy="339.56293"
+     inkscape:zoom="2"
+     inkscape:cx="97.205725"
+     inkscape:cy="170.40562"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -39,11 +39,11 @@
      fit-margin-left="10"
      fit-margin-right="10"
      fit-margin-bottom="10"
-     inkscape:window-width="1920"
+     inkscape:window-width="956"
      inkscape:window-height="1011"
-     inkscape:window-x="0"
+     inkscape:window-x="2880"
      inkscape:window-y="0"
-     inkscape:window-maximized="1" />
+     inkscape:window-maximized="0" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -62,8 +62,8 @@
      id="layer1"
      transform="translate(-73.866205,-68.410864)">
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
-       d="m 90.623177,117.60584 -0.0501,-32.486184"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.05799997;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="M 90.55446,117.6058 90.64179,85.119695"
        id="path883"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
@@ -111,11 +111,28 @@
        inkscape:export-ydpi="78" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.11945534;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
-       d="m 105.33242,164.67346 -0.0706,-46.96374"
+       d="m 105.33015,164.67346 -0.0661,-46.96374"
        id="path883-2-3-6"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
        inkscape:export-xdpi="78"
        inkscape:export-ydpi="78" />
+    <ellipse
+       style="opacity:1;fill:#ff0000;fill-opacity:1;stroke:none;stroke-width:0.46866897;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       id="path834"
+       cx="90.609955"
+       cy="85.409561"
+       rx="1.260998"
+       ry="1.3077701"
+       inkscape:export-filename="/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/path834.png"
+       inkscape:export-xdpi="161"
+       inkscape:export-ydpi="161" />
+    <ellipse
+       style="opacity:1;fill:#00ff00;fill-opacity:1;stroke:none;stroke-width:0.46866897;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       id="path834-3"
+       cx="90.69249"
+       cy="213.39877"
+       rx="1.260998"
+       ry="1.3077701" />
   </g>
 </svg>

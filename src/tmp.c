@@ -35,23 +35,22 @@ struct SortYClass {
    bool operator() (Point2f pt1, Point2f pt2) { return (pt1.y < pt2.y);}
 } sortYCoord;
 
-
 /* Sort Maps helper class */
 // Declaring the type of Predicate that accepts 2 pairs and return a bool
 typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorX;
 // Defining a lambda function to compare two pairs. It will compare two pairs using second field
 ComparatorX compFunctorX = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
-      {
+{
    return elem1.second.x < elem2.second.x;
-      };
+};
 
 // Declaring the type of Predicate that accepts 2 pairs and return a bool
 typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorY;
 // Defining a lambda function to compare two pairs. It will compare two pairs using second field
 ComparatorY compFunctorY = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
-      {
+{
    return elem1.second.y < elem2.second.y;
-      };
+};
 
 
 void thinning(const cv::Mat& src, cv::Mat& dst);
@@ -70,9 +69,9 @@ public:
    }
 
    unordered_map<int, unordered_map<int, int>> getVertices(void)
-         {
+   {
       return this->vertices;
-         }
+   }
 
    void setVertices(unordered_map<int, unordered_map<int, int>> vertices)
    {
@@ -80,7 +79,7 @@ public:
    }
 
    vector<int> shortest_path(int start, int finish)
-         {
+   {
       // Second arguments -> distances
       // Find the smallest distance in the already in closed list and push it in -> previous
       unordered_map<int, int> distances;
@@ -149,179 +148,31 @@ public:
       }
 
       return path;
-         }
-
-};
-
-class CoordToTrack
-{
-private:
-   Point2f StartCoord;
-   Point2f EndCoord;
-   bool error = true;
-   int StartVertex, EndVertex;
-public:
-   void setStartCoord(Point2f point)
-   {
-      this->StartCoord = point;
-   }
-   Point2f getStartCoord()
-   {
-      return this->StartCoord ;
-   }
-   void setEndCoord(Point2f point)
-   {
-      this->EndCoord = point;
-   }
-   Point2f getEndCoord()
-   {
-      return this->EndCoord ;
-   }
-   void setStartVertex(int vertex)
-   {
-      this->StartVertex = vertex;
-   }
-   int getStartVertex()
-   {
-      return this->StartVertex ;
-   }
-
-   void setEndVertex(int vertex)
-   {
-      this->EndVertex = vertex;
-   }
-   int getEndVertex()
-   {
-      return this->EndVertex ;
-   }
-
-   bool getError()
-   {
-      return this->error;
-   }
-   void setError(bool error)
-   {
-      this->error = error;
    }
 
 };
-
-CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
-{
-   CoordToTrack Coordinates;
-   Mat hsv_image;
-   Point2f startVertex, endVertex;
-
-   /* Convert input image to HSV */
-   cvtColor(bgr_image, hsv_image, cv::COLOR_BGR2HSV);
-
-   /* Threshold the HSV image, keep only the red pixels */
-   Mat red_hue_image, green_hue_image, hue_image;
-
-   inRange(hsv_image, cv::Scalar(60, 100, 100), cv::Scalar(120, 255, 255), green_hue_image);
-   inRange(hsv_image, cv::Scalar(0 , 100, 100), cv::Scalar(10, 255, 255), red_hue_image);
-
-
-   // Combine the above two images
-   cv::addWeighted(red_hue_image, 1.0, green_hue_image, 1.0, 0.0, hue_image);
-
-
-   imshow("Tmp", red_hue_image) ;
-   GaussianBlur(hue_image, hue_image, cv::Size(9, 9), 2, 2);
-
-   /* Use the Hough transform to detect circles in the combined threshold image */
-   vector<cv::Vec3f> circles;
-   HoughCircles(hue_image, circles, CV_HOUGH_GRADIENT, 1, hue_image.rows/8, 100, 20, 0, 0);
-
-   if((circles.size() == 0) || (circles.size() > 2))
-   {
-      Coordinates.setError (true);
-   }
-   else
-   {
-      for(size_t current_circle = 0; current_circle < circles.size(); ++current_circle)
-      {
-         cv::Point center(std::round(circles[current_circle][0]), std::round(circles[current_circle][1]));
-
-         //int radius = std::round(circles[current_circle][2]);
-         //circle(bgr_image, center, radius, cv::Scalar(100, 20, 50), 2);
-         char label[12];
-
-         Vec3b color = bgr_image.at<Vec3b>(center);
-         /* BGR*/
-         if (color[2] == 255) //#TODO: Find a better way
-         {
-            /* Start Point */
-            sprintf(label, "%s", "Start Point");
-            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
-            Coordinates.setStartCoord(center);
-            startVertex = center;
-         }
-         else if (color[1] == 255) //#TODO: FInd a better way
-         {
-            /* End Point */
-            sprintf(label, "%s", "End Point");
-            //putText(bgr_image, label, center, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
-            Coordinates.setEndCoord(center);
-            endVertex = center;
-
-         }
-         else { /* pass*/}
-
-         double minDistStart=0xFFFFFFFFF;
-         double minDistEnd=0xFFFFFFFFF;
-
-         for( unsigned int i = 0; i < corners.size(); i++ ){
-            double tmpStart, tmpEnd;
-
-            double VertexdistStart = sqrt((startVertex.x - corners[i].x) * (startVertex.x - corners[i].x) + (startVertex.y - corners[i].y) * (startVertex.y - corners[i].y));
-            tmpStart = min(minDistStart, VertexdistStart);
-            if(tmpStart < minDistStart)
-            {
-               Coordinates.setStartVertex(i);
-               minDistStart = tmpStart;
-            }
-
-            double VertexdistEnd = sqrt((endVertex.x - corners[i].x) * (endVertex.x - corners[i].x) + (endVertex.y - corners[i].y) * (endVertex.y - corners[i].y));
-            tmpEnd = min(minDistEnd, VertexdistEnd);
-            if(tmpEnd < minDistEnd)
-            {
-               Coordinates.setEndVertex(i);
-               minDistEnd = tmpEnd;
-            }
-         }
-
-
-      }
-   }
-   return Coordinates;
-
-}
-
 /* Global Variables */
 Mat src;
 
 int main()
 {
    /* Initializing and Solving the Maze*/
+   int init_node = 9;
+   int dest_node = 7;
    Graph g;
    int seq = 0;
-   CoordToTrack StartEndCoordinates;
 
 #ifdef MEAS_TIME
    const int64 start = getTickCount();
 #endif
    //namedWindow("sourceWindow", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze2.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze1.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
       return -1;
    }
 
-
-
-#if 1
    Mat grayscale, skel;
    cvtColor(src, grayscale, CV_BGR2GRAY);
    thinning(grayscale, skel);
@@ -329,20 +180,12 @@ int main()
    /* Corner detection */
    std::vector< cv::Point2f > corners;
    goodFeaturesToTrack(skel, corners, 500 , 0.01, 10, Mat(), 3 , false, 0.04);
-
-
-   StartEndCoordinates = findStartEndCoord(src, corners);
-   int init_node = StartEndCoordinates.getStartVertex();
-   int dest_node = StartEndCoordinates.getEndVertex();
-   cout << "Start: "<< StartEndCoordinates.getStartCoord() << " End: " << StartEndCoordinates.getEndCoord() << endl;
-
-
 #ifdef DEBUG
    cout << "** Number of corners detected: "<<corners.size()<<endl;
 #endif
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if DEBUG
+#if 1
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
@@ -381,7 +224,7 @@ int main()
 #endif
          if (dist > 0) map.insert({j,dist});
       }
-#if DEBUG
+#if 1
       cout << "g.add_vertex(" << i << ", {" ;
       for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
       cout << "}" << endl;
@@ -401,6 +244,7 @@ int main()
       return -1;
    }
 
+
    /* CLEAN UP GRAPH AND FOUNDPATH */
    seq = 0;
    int offset = 0;
@@ -417,6 +261,8 @@ int main()
          unordered_map<int, int>& map1 = ConnectionGraph[vertex];
          unordered_map<int, int>& map2 = ConnectionGraph[nextVertex];
 
+         cout << "**********************************************" << endl;
+         cout << "Checking Connection between " << vertex <<   " and " << nextVertex << endl;
 #if 0
          std::cout << "map1 contains:";
          for ( auto it = map1.begin(); it != map1.end(); ++it )
@@ -432,9 +278,10 @@ int main()
 
          for ( auto it = map1.begin(); it != map1.end(); ++it ) /* For all maps1 ' s elements */
          {
+            cout << "Finding " << it->first << " in map2 (" <<nextVertex << ")"<< endl;
             if (map2.find(it->first) != map2.end()) /* Common Connection found */
             {
-               //int direction;
+               int direction;
                int CommonNode = it->first;
                int middlePoint;
                map<int, Point2f> VertCoord;
@@ -443,9 +290,9 @@ int main()
                VertCoord.insert(make_pair(nextVertex, corners[nextVertex]));
 
 #if DEBUG
-               cout << "Unsorted points in vertical direction: "<< endl;
-               for (std::pair<int, Point2f> element : VertCoord)
-                  cout << element.first << " :: " << element.second << endl;
+                  cout << "Unsorted points in vertical direction: "<< endl;
+                  for (std::pair<int, Point2f> element : VertCoord)
+                     cout << element.first << " :: " << element.second << endl;
 #endif
 
                /* "3 way connection" found. First find middle Point and decide if node is redundant or T-intersection */
@@ -453,12 +300,18 @@ int main()
                float YVals[] = {corners[vertex].y, corners[CommonNode].y, corners[nextVertex].y};
 
 
+
+               float tmp1 = (*std::max_element(XVals,XVals+3)) - ((*std::min_element(XVals,XVals+3)));
+
+               float tmp2 = (*std::max_element(YVals,YVals+3)) - ((*std::min_element(YVals,YVals+3)));
+
+
                /* Get direction & sort to get middle point*/
                if(   ((*std::max_element(XVals,XVals+3)) - ((*std::min_element(XVals,XVals+3))))
-                     > ((*std::max_element(YVals,YVals+3)) - ((*std::min_element(YVals,YVals+3))))
+                   > ((*std::max_element(YVals,YVals+3)) - ((*std::min_element(YVals,YVals+3))))
                )
                {
-                  //direction = horizontal;
+                  direction = horizontal;
                   std::set<std::pair<int, Point2f>, ComparatorX> VertexXSort(VertCoord.begin(), VertCoord.end(), compFunctorX);
                   //TODO: Find a better way to get middle element
                   int count= 0;
@@ -482,7 +335,7 @@ int main()
                }
                else
                {
-                  //direction = vertical;
+                  direction = vertical;
                   std::set<std::pair<int, Point2f>, ComparatorY> VertexYSort(
                         VertCoord.begin(), VertCoord.end(), compFunctorY);
                   //TODO: Find a better way to get middle element
@@ -508,6 +361,9 @@ int main()
 
                if (middlePoint == CommonNode) /* Continue processing only when both nodes are equal  to avoid double inclusion */
                {
+
+                  cout << " further cheking ..." << endl;
+
                   unordered_map<int, int>& mapMiddlePoint = ConnectionGraph[middlePoint];
 
                   if(mapMiddlePoint.size() <= 2)
@@ -553,6 +409,7 @@ int main()
             else
             {
                /* Not found */
+               cout << "..." << endl;
             }
 
          }
@@ -589,7 +446,7 @@ int main()
    cout << "CPU Time : " << timeSec * 1000 << " ms" << endl;
 #endif
 
-#endif
+
    printf("Done !!");
 
 
@@ -796,7 +653,6 @@ void thinning(const cv::Mat& src, cv::Mat& dst)
    do {
       thinningIteration(dst, 0);
       thinningIteration(dst, 1);
-
       cv::absdiff(dst, prev, diff);
       dst.copyTo(prev);
    }
