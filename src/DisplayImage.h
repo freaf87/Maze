@@ -8,11 +8,8 @@
 #ifndef SRC_DISPLAYIMAGE_H_
 #define SRC_DISPLAYIMAGE_H_
 
-enum orientation
-{
-   horizontal,
-   vertical
-};
+#define horizontal 1
+#define vertical   2
 
 
 

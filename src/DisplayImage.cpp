@@ -20,11 +20,15 @@
 #include <math.h>
 
 #define MEAS_TIME 1
-#define DEBUG 0
+#define DEBUG 1
 #define PI 3.14159265
 
 using namespace cv;
 using namespace std;
+
+
+std::vector< cv::Point2f > corners;
+
 
 /* Sort Vectors helper class*/
 struct SortXClass {
@@ -36,22 +40,48 @@ struct SortYClass {
 } sortYCoord;
 
 
+typedef function<bool(pair<int, int>, pair<int, int>)> Comparator;
+
+Comparator compFunctorXincr = [](pair<int, int> point1 , pair<int, int> point2)
+{
+   return corners[point1.first].x <= corners[point2.first].x;
+};
+
+
+Comparator compFunctorXdecr = [](pair<int, int> point1 , pair<int, int> point2)
+{
+   return corners[point1.first].x >= corners[point2.first].x;
+};
+
+
+Comparator compFunctorYincr = [](pair<int, int> point1 , pair<int, int> point2)
+{
+   return corners[point1.first].y <= corners[point2.first].y;
+};
+
+
+Comparator compFunctorYdecr = [](pair<int, int> point1 , pair<int, int> point2)
+{
+   return corners[point1.first].y >= corners[point2.first].y;
+};
+
+
 /* Sort Maps helper class */
 // Declaring the type of Predicate that accepts 2 pairs and return a bool
 typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorX;
 // Defining a lambda function to compare two pairs. It will compare two pairs using second field
 ComparatorX compFunctorX = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
-      {
+{
    return elem1.second.x < elem2.second.x;
-      };
+};
 
 // Declaring the type of Predicate that accepts 2 pairs and return a bool
 typedef std::function<bool(std::pair<int, Point2f>, std::pair<int, Point2f>)> ComparatorY;
 // Defining a lambda function to compare two pairs. It will compare two pairs using second field
 ComparatorY compFunctorY = [](std::pair<int, Point2f> elem1 ,std::pair<int, Point2f> elem2)
-      {
+{
    return elem1.second.y < elem2.second.y;
-      };
+};
 
 class Graph
 {
@@ -144,7 +174,7 @@ public:
       }
 
       return path;
-         }
+    }
 
 };
 
@@ -205,7 +235,7 @@ CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners);
 void thinning(const cv::Mat& src, cv::Mat& dst);
 void thinningIteration(cv::Mat& img, int iter);
 bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
-
+int getDirectionAndOrientation(Point2f P1, Point2f P2);
 /* Global Variables */
 Mat src;
 
@@ -220,7 +250,7 @@ int main()
    const int64 start = getTickCount();
 #endif
    namedWindow( "Original Image with labeled Corners", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3_2.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
@@ -232,7 +262,7 @@ int main()
    thinning(grayscale, skel);
 
    /* Corner detection */
-   std::vector< cv::Point2f > corners;
+
    goodFeaturesToTrack(skel, corners, 500 , 0.01, 10, Mat(), 3 , false, 0.04);
 
 
@@ -248,7 +278,7 @@ int main()
 #endif
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if !DEBUG
+#if DEBUG
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
@@ -273,7 +303,7 @@ int main()
       unordered_map<int, int> map;
       for(int j = 0; j < (int)corners.size(); j++)
       {
-#if !DEBUG
+#if DEBUG
       cout << "Processing: " << i << " of " << j << endl;
 #endif
          int dist = 0;
@@ -302,9 +332,10 @@ int main()
    /* Search PATH */
    vector<int> FoundPATH = g.shortest_path(init_node, dest_node);
    FoundPATH.push_back(init_node); /* Append last element to List */
-   reverse(FoundPATH.begin(),FoundPATH.end()); /* improve readibility*/
+   reverse(FoundPATH.begin(),FoundPATH.end()); /* improve readability*/
 
    vector<int> FoundPATHResult = FoundPATH;
+
    if(FoundPATH.empty())
    {
       cout << "Path not found between vertex " << init_node << " and vertex " << dest_node << endl;
@@ -321,8 +352,11 @@ int main()
    {
       try
       {
-
          int nextVertex = FoundPATH.at(seq+1);
+
+         cout << "**********************************************" << endl;
+         cout << "Analyzing Path from " << vertex << " to " << nextVertex  << ":"<< endl;
+
 
          unordered_map<int, int>& map1 = ConnectionGraph[vertex];
          unordered_map<int, int>& map2 = ConnectionGraph[nextVertex];
@@ -340,7 +374,45 @@ int main()
          cout << "**********************************************" << endl;
 #endif
 
-         for ( auto it = map1.begin(); it != map1.end(); ++it ) /* For all maps1 ' s elements */
+
+         int dirAndOri = getDirectionAndOrientation(corners[vertex],corners[nextVertex]);
+         set<pair<int, int>, Comparator> Map1Sorted;
+
+         switch(dirAndOri)
+         {
+            case horizontal:
+            {
+               set<pair<int, int>, Comparator> Map1SortedXincr(map1.begin(), map1.end(), compFunctorXincr);
+               Map1Sorted = Map1SortedXincr;
+            }
+               break;
+
+            case -horizontal:
+            {
+               set<pair<int, int>, Comparator> Map1SortedXdecr(map1.begin(), map1.end(), compFunctorXdecr);
+               Map1Sorted =  Map1SortedXdecr;
+            }
+               break;
+
+            case -vertical:
+
+            {
+               set<pair<int, int>, Comparator> Map1SortedYdecr(map1.begin(), map1.end(), compFunctorYdecr);
+
+               Map1Sorted = Map1SortedYdecr;
+            }
+               break;
+
+            case vertical:
+            {
+               set<pair<int, int>, Comparator> Map1SortedYincr(map1.begin(), map1.end(), compFunctorYincr);
+               Map1Sorted = Map1SortedYincr;
+            }
+               break;
+         }
+
+
+         for ( auto it = Map1Sorted.begin(); it != Map1Sorted.end(); ++it ) /* For all maps1 ' s elements */
          {
             if (map2.find(it->first) != map2.end()) /* Common Connection found */
             {
@@ -468,12 +540,13 @@ int main()
          }
 
          seq++;
+
       }
       catch (std::out_of_range &)
       {
          cout << "Last index reached..." << endl;
       }
-
+      cout << "**********************************************" << endl;
    }
 
 
@@ -520,6 +593,28 @@ int main()
    return 0;
 }
 
+
+int getDirectionAndOrientation(Point2f P1, Point2f P2)
+{
+   float delta = ((max(P1.x, P2.x) - min(P1.x, P2.x)) < (max(P1.y, P2.y) - min(P1.y, P2.y)));
+
+   if(delta)
+   {
+      if (P1.y > P2.y)
+         return -vertical;
+      else
+         return vertical;
+   }
+   else
+   {
+      if (P1.x > P2.x)
+          return -horizontal;
+       else
+          return horizontal;
+   }
+}
+
+
 bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug)
 {
 
@@ -535,7 +630,7 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    double Vertexdist = sqrt((vertex2.x - vertex1.x) * (vertex2.x - vertex1.x) + (vertex2.y - vertex1.y) * (vertex2.y - vertex1.y));
 
    /* top left point, width, height */
-   int RectOffset = 5;
+   int RectOffset = 4;
    Rect croppedRect = Rect(min(vertex1.x, vertex2.x)-RectOffset, min(vertex1.y, vertex2.y)-RectOffset, (int)(abs(vertex1.x - vertex2.x))+2*RectOffset, (int)(abs(vertex1.y-vertex2.y))+2*RectOffset);
    Mat  croppedImage = m(croppedRect);
 
@@ -558,7 +653,7 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    cvtColor(erosion, cdst, CV_GRAY2BGR);
 
    vector<Vec4i> lines;
-   HoughLinesP(erosion, lines, 1, CV_PI/30, 15, (int)(Vertexdist*2/3), 4);
+   HoughLinesP(erosion, lines, 1, CV_PI/30, 10, (int)(Vertexdist*2/3), 4);
 
 
 
@@ -613,17 +708,20 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    angleInputPts = atan(abs(gradInputPoint))* 180 / PI;
    angleHoughPts = atan (abs(gradHough))* 180 / PI;
 
+   float DistError = abs((maxDistance-4) - Vertexdist)/ Vertexdist;
+   float AngleError = abs(angleHoughPts-angleInputPts);
 
 #if DEBUG
    cout << "__________________________________"<< endl;
    cout << "Input Points: " << Inputpts[0] << "\t" << Inputpts[1] << endl;
    cout << "Hough Points: " << Houghpts[0] << "\t" << Houghpts[1] << endl;
-   cout << "Angle:  " << angleInputPts <<  "\t" << angleHoughPts  << endl;
+   cout << "Vertex angle:  " << angleInputPts <<  "Hough angle:" << "\t" << angleHoughPts  << endl;
    cout << "Vertexdist = " << Vertexdist << "\t" << "HoughDis = " << maxDistance << endl;
-   cout << "Distance error: " << abs(maxDistance - Vertexdist)/ Vertexdist << endl;
+   cout << "Distance error: " << DistError << "(< 0.009)" << endl;
+   cout << "Angle error: " << AngleError  << "( <" << (-0.0088*Vertexdist + 7.4) << ")"<< endl;
 #endif
 
-   if ( abs(maxDistance - Vertexdist)/ Vertexdist < 0.09 &&  abs(angleHoughPts-angleInputPts) < (-0.0088*Vertexdist + 7.4))
+   if ( DistError < 0.09 &&  AngleError < (-0.0088*Vertexdist + 7.4))
    {
       *distance = (int)(Vertexdist);
       return true;
@@ -828,7 +926,6 @@ CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
                minDistEnd = tmpEnd;
             }
          }
-
 
       }
    }
