@@ -27,7 +27,7 @@ using namespace cv;
 using namespace std;
 
 
-std::vector< cv::Point2f > corners;
+vector<Point2f> corners;
 
 
 /* Sort Vectors helper class*/
@@ -93,11 +93,10 @@ public:
       // Insert the connected nodes in unordered map
       vertices.insert(unordered_map<int, const unordered_map<int, int>>::value_type(name, edges));
    }
-
    unordered_map<int, unordered_map<int, int>> getVertices(void)
-         {
-      return this->vertices;
-         }
+   {
+      return this->vertices ;
+   }
 
    void setVertices(unordered_map<int, unordered_map<int, int>> vertices)
    {
@@ -105,7 +104,7 @@ public:
    }
 
    vector<int> shortest_path(int start, int finish)
-         {
+   {
       // Second arguments -> distances
       // Find the smallest distance in the already in closed list and push it in -> previous
       unordered_map<int, int> distances;
@@ -230,12 +229,14 @@ public:
    }
 
 };
-
 CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners);
 void thinning(const cv::Mat& src, cv::Mat& dst);
 void thinningIteration(cv::Mat& img, int iter);
 bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool debug);
 int getDirectionAndOrientation(Point2f P1, Point2f P2);
+bool atLeastOneNeighbourPerpendicular(int PointFrom, int PointTo, vector<Point2f> corners, unordered_map<int, int> map);
+
+
 /* Global Variables */
 Mat src;
 
@@ -243,14 +244,14 @@ int main()
 {
    /* Initializing and Solving the Maze*/
    Graph g;
-   int seq = 0;
+   unsigned int seq = 0;
    CoordToTrack StartEndCoordinates;
 
 #ifdef MEAS_TIME
-   const int64 start = getTickCount();
+   const int64 startTime = getTickCount();
 #endif
    namedWindow( "Original Image with labeled Corners", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3_2.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
@@ -276,6 +277,7 @@ int main()
 #ifdef DEBUG
    cout << "** Number of corners detected: "<<corners.size()<<endl;
 #endif
+
    for( size_t i = 0; i < corners.size(); i++ )
    {
 #if DEBUG
@@ -290,7 +292,7 @@ int main()
    }
 
    imshow ("Original Image with labeled Corners",src);
-   resizeWindow("Original Image with labeled Corners", 900, 900);
+   resizeWindow("Original Image with labeled Corners", 1000, 1000);
 
 #if DEBUG
    printf("max count = %d \n", (int)corners.size());
@@ -303,24 +305,27 @@ int main()
       unordered_map<int, int> map;
       for(int j = 0; j < (int)corners.size(); j++)
       {
-#if DEBUG
-      cout << "Processing: " << i << " of " << j << endl;
-#endif
-         int dist = 0;
-         bool debug = false;
+         if(i!=j) /*skip*/
+
+         {
+            int dist = 0;
+            bool debug = false;
 #if 0
-         if(i==3 && j==5) debug = true;
-         else debug = false;
+            if(i==3 && j==5) debug = true;
+            else debug = false;
 #endif
 
-         bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
+            bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
 
 #if DEBUG
-         if(isCon == true) cout << i << " <--> " << j << endl;
-         else cout << i << " --- " << j << endl;
+            if(isCon == true) cout << i << " <--> " << j << endl;
+            else cout << i << " --- " << j << endl;
 #endif
-         if (dist > 0) map.insert({j,dist});
+            if (dist > 0) map.insert({j,dist});
+         }
+
       }
+
 #if DEBUG
       cout << "g.add_vertex(" << i << ", {" ;
       for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
@@ -348,18 +353,44 @@ int main()
    unordered_map<int, unordered_map<int, int>> ConnectionGraph;
    ConnectionGraph = g.getVertices();
 
+
+   int startVertex = FoundPATH.at(0);
+   bool exitForLoop = false;
+
    for (int vertex : FoundPATH)
    {
+      cout << "/**********************************************************/" << endl;
+      cout << "Processing " << vertex << " in step " << seq << " of "<<  FoundPATH.size() << endl;
+      cout << "/**********************************************************/" << endl;
       try
       {
          int nextVertex = FoundPATH.at(seq+1);
-
          cout << "**********************************************" << endl;
-         cout << "Analyzing Path from " << vertex << " to " << nextVertex  << ":"<< endl;
+         cout << "Analyzing Path from " << startVertex << " to " << nextVertex  << ":"<< endl;
 
+         int dirAndOri = getDirectionAndOrientation(corners[vertex],corners[nextVertex]);
 
-         unordered_map<int, int>& map1 = ConnectionGraph[vertex];
+         if ((seq+1) ==  (FoundPATH.size()-1)) /* if next element will be last*/
+         {
+            exitForLoop = true;
+         }
+         else /* seq+2 is still possible */
+         {
+
+            if ( (abs(dirAndOri) == abs(getDirectionAndOrientation(corners[nextVertex],corners[FoundPATH.at(seq+2)])))) /* Same direction => skip current loop*/
+            {
+               seq++;
+               cout << "skipping" << endl;
+               continue;
+            }
+
+         }
+
+         unordered_map<int, int>& map1 = ConnectionGraph[startVertex];
          unordered_map<int, int>& map2 = ConnectionGraph[nextVertex];
+
+
+
 
 #if 0
          std::cout << "map1 contains:";
@@ -375,7 +406,7 @@ int main()
 #endif
 
 
-         int dirAndOri = getDirectionAndOrientation(corners[vertex],corners[nextVertex]);
+
          set<pair<int, int>, Comparator> Map1Sorted;
 
          switch(dirAndOri)
@@ -418,9 +449,10 @@ int main()
             {
                //int direction;
                int CommonNode = it->first;
-               int middlePoint;
+               int middlePoint, previousMiddlePoint;
+
                map<int, Point2f> VertCoord;
-               VertCoord.insert(make_pair(vertex    , corners[vertex]    ));
+               VertCoord.insert(make_pair(startVertex    , corners[startVertex]    ));
                VertCoord.insert(make_pair(CommonNode, corners[CommonNode]));
                VertCoord.insert(make_pair(nextVertex, corners[nextVertex]));
 
@@ -431,8 +463,8 @@ int main()
 #endif
 
                /* "3 way connection" found. First find middle Point and decide if node is redundant or T-intersection */
-               float XVals[] = {corners[vertex].x, corners[CommonNode].x, corners[nextVertex].x};
-               float YVals[] = {corners[vertex].y, corners[CommonNode].y, corners[nextVertex].y};
+               float XVals[] = {corners[startVertex].x, corners[CommonNode].x, corners[nextVertex].x};
+               float YVals[] = {corners[startVertex].y, corners[CommonNode].y, corners[nextVertex].y};
 
 
                /* Get direction & sort to get middle point*/
@@ -446,7 +478,11 @@ int main()
                   int count= 0;
                   for (std::pair<int, Point2f> element : VertexXSort)
                   {
-                     if (count == 1)
+                     if (count ==0)
+                     {
+                        previousMiddlePoint = (int)element.first;
+                     }
+                     else if (count == 1)
                      {
                         middlePoint = (int)element.first;
                         break;
@@ -471,7 +507,11 @@ int main()
                   int count= 0;
                   for (std::pair<int, Point2f> element : VertexYSort)
                   {
-                     if (count == 1)
+                     if (count ==0)
+                     {
+                        previousMiddlePoint = (int)element.first;
+                     }
+                     else if (count == 1)
                      {
                         middlePoint = (int)element.first;
                         break;
@@ -492,7 +532,7 @@ int main()
                {
                   unordered_map<int, int>& mapMiddlePoint = ConnectionGraph[middlePoint];
 
-                  if(mapMiddlePoint.size() <= 2)
+                  if((mapMiddlePoint.size() <= 2) || (atLeastOneNeighbourPerpendicular(previousMiddlePoint, middlePoint, corners, mapMiddlePoint) == false))
                   {
                      /* 2 Neighbors:
                       *    (1) delete in ConnectionGraph the key middlePoint and his Neighbors map
@@ -521,10 +561,10 @@ int main()
                   {
                      /* greather than 2 Neighbors:
                       *    (1) Remove unwanted ConnectionGraph over map1 and map2
-                      *    (2) insert middlePoint between vertex and nextVertex in FoundPath since this is a valid intersection
+                      *    (2) insert middlePoint between startVertex and nextVertex in FoundPath since this is a valid intersection
                       */
                      map1.erase(nextVertex);
-                     map2.erase(vertex);
+                     map2.erase(startVertex);
                      cout << middlePoint << " inserted at " << seq << endl;
                      FoundPATHResult.insert(FoundPATHResult.begin()+ (seq+1)+ offset, middlePoint);
                      cout << "Inserting " << middlePoint << " in FoundPATHResult" << endl;
@@ -539,7 +579,10 @@ int main()
 
          }
 
+
+         startVertex = nextVertex;
          seq++;
+         if (exitForLoop == true) break;
 
       }
       catch (std::out_of_range &)
@@ -582,8 +625,8 @@ int main()
 
 
 #ifdef MEAS_TIME
-   const double timeSec = (getTickCount() - start) / getTickFrequency();
-   cout << "CPU Time : " << timeSec * 1000 << " ms" << endl;
+   const double timeSec = (getTickCount() - startTime) / getTickFrequency();
+   cout << "CPU Time : " << timeSec/60.0  << " min" << endl;
 #endif
 
    printf("Done !!");
@@ -593,6 +636,34 @@ int main()
    return 0;
 }
 
+
+bool atLeastOneNeighbourPerpendicular(int PointFrom, int PointTo, vector<Point2f> corners, unordered_map<int, int> map)
+{
+   Point2f vectorRef,vector;
+
+   vectorRef.x = corners[PointTo].x - corners[PointFrom].x;
+   vectorRef.y = corners[PointTo].y - corners[PointFrom].y;
+
+   float lenVectorRef = sqrt(vectorRef.x * vectorRef.x + vectorRef.y * vectorRef.y);
+
+   for (auto it = map.begin(); it != map.end(); ++it) /* for all neighbor of middlepoint*/
+   {
+      if(it->first != PointFrom) /* reference vector */
+      {
+         vector.x = corners[PointTo].x - corners[it->first ].x;
+         vector.y = corners[PointTo].y - corners[it->first ].y;
+
+         /* Get Angle between vectorRef and vector */
+         float lenVector = sqrt(vector.x * vector.x + vector.y * vector.y);
+         float angle = acos((vectorRef.x * vector.x + vectorRef.y * vector.y)/ (lenVectorRef * lenVector))* 180.0 / PI;
+
+         int thres = 10; /* degrees*/
+         cout << "Angle between " << PointFrom << " , " << PointTo << " and  " << it->first << " is " << angle << endl;
+         if (angle > 90-thres && angle < 90+thres) return true;
+      }
+   }
+   return false;
+}
 
 int getDirectionAndOrientation(Point2f P1, Point2f P2)
 {
@@ -678,7 +749,7 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
       }
    }
 
-#if 1
+#if 0
    if(debug)
    {
       imshow("Debug Image", erosion );
@@ -708,20 +779,27 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    angleInputPts = atan(abs(gradInputPoint))* 180 / PI;
    angleHoughPts = atan (abs(gradHough))* 180 / PI;
 
-   float DistError = abs((maxDistance-4) - Vertexdist)/ Vertexdist;
+   float DistError = abs((maxDistance - RectOffset) - Vertexdist)/ Vertexdist;
    float AngleError = abs(angleHoughPts-angleInputPts);
+
+
+   float toleranceAngle, toleranceDist;
+
+   toleranceAngle = exp(-0.002*(Vertexdist-1000));
+   toleranceDist  = max((-0.0000829 * Vertexdist + 0.087), 0.01);
 
 #if DEBUG
    cout << "__________________________________"<< endl;
    cout << "Input Points: " << Inputpts[0] << "\t" << Inputpts[1] << endl;
    cout << "Hough Points: " << Houghpts[0] << "\t" << Houghpts[1] << endl;
-   cout << "Vertex angle:  " << angleInputPts <<  "Hough angle:" << "\t" << angleHoughPts  << endl;
+   cout << "Vertex angle:  " << angleInputPts << "\t" <<  "Hough angle:" << "\t" << angleHoughPts  << endl;
    cout << "Vertexdist = " << Vertexdist << "\t" << "HoughDis = " << maxDistance << endl;
-   cout << "Distance error: " << DistError << "(< 0.009)" << endl;
-   cout << "Angle error: " << AngleError  << "( <" << (-0.0088*Vertexdist + 7.4) << ")"<< endl;
+   cout << "Distance error: " << DistError << "( < "<< toleranceDist << ")" << endl;
+   cout << "Angle error: " << AngleError  << "( < " << toleranceAngle << ")"<< endl;
 #endif
 
-   if ( DistError < 0.09 &&  AngleError < (-0.0088*Vertexdist + 7.4))
+
+   if ( (DistError < toleranceDist ) &&  (AngleError <  toleranceAngle) )
    {
       *distance = (int)(Vertexdist);
       return true;

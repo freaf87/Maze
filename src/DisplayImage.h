@@ -11,6 +11,11 @@
 #define horizontal 1
 #define vertical   2
 
+typedef enum {
+   strategy_init = 0,
+   strategy_keep,
+   strategy_delete_all
+} vertexStrategy_t;
 
 
 
