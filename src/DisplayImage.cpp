@@ -251,7 +251,7 @@ int main()
    const int64 startTime = getTickCount();
 #endif
    namedWindow( "Original Image with labeled Corners", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
@@ -301,29 +301,45 @@ int main()
 
    for( int i = 0; i < (int)corners.size(); i++ )
    {
-
       unordered_map<int, int> map;
       for(int j = 0; j < (int)corners.size(); j++)
       {
-         if(i!=j) /*skip*/
-
+         if(i!=j)
          {
-            int dist = 0;
-            bool debug = false;
-#if 0
-            if(i==3 && j==5) debug = true;
-            else debug = false;
-#endif
+            if(i > j)
+            {
+               /* get map of j */
+               unordered_map<int, unordered_map<int, int>> temp_graph;
+               temp_graph = g.getVertices();
+               unordered_map<int, int>& temp_map = temp_graph[j];
 
-            bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
+               std::unordered_map<int, int>::const_iterator foundCorner = temp_map.find (i);
+
+               if ( foundCorner != temp_map.end() ) /* Corner found*/
+               {
+                  map.insert({j,foundCorner->second});
+               }
+               else continue;
+
+            }
+            else
+            {
+               int dist = 0;
+               bool debug = false;
+#if 0
+               if(i==3 && j==5) debug = true;
+               else debug = false;
+#endif
+               bool isCon = isVertexConnected(skel,corners[i],corners[j],&dist, debug);
 
 #if DEBUG
-            if(isCon == true) cout << i << " <--> " << j << endl;
-            else cout << i << " --- " << j << endl;
+               if(isCon == true) cout << i << " <--> " << j << endl;
+               else cout << i << " --- " << j << endl;
 #endif
-            if (dist > 0) map.insert({j,dist});
-         }
+               if (dist > 0) map.insert({j,dist});
+            }
 
+         }
       }
 
 #if DEBUG
