@@ -20,7 +20,7 @@
 #include <math.h>
 
 #define MEAS_TIME 1
-#define DEBUG 1
+#define DEBUG 0
 #define PI 3.14159265
 
 using namespace cv;
@@ -251,7 +251,7 @@ int main()
    const int64 startTime = getTickCount();
 #endif
    namedWindow( "Original Image with labeled Corners", WINDOW_NORMAL );
-   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/maze_final3.png");
+   src = cv::imread("/home/freaf87/Workspaces/eclipse-workspace/DisplayImage/image/3/7_20_maze3_original.png");
    if (!src.data)
    {
       cout << "Input file not found !!!" << endl;
@@ -264,7 +264,7 @@ int main()
 
    /* Corner detection */
 
-   goodFeaturesToTrack(skel, corners, 500 , 0.01, 10, Mat(), 3 , false, 0.04);
+   goodFeaturesToTrack(skel, corners, 1000 , 0.01, 10, Mat(), 3 , false, 0.04);
 
 
    StartEndCoordinates = findStartEndCoord(src, corners);
@@ -280,7 +280,7 @@ int main()
 
    for( size_t i = 0; i < corners.size(); i++ )
    {
-#if DEBUG
+#if 1
       char label[12];
       sprintf(label, "%d", (int)i);
       putText(src, label, corners[i], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,0,255), 2.0);
@@ -345,7 +345,7 @@ int main()
 #if DEBUG
       cout << "g.add_vertex(" << i << ", {" ;
       for(auto it = map.begin(); it !=  map.end(); it++) cout << "{" << it->first << "," << it->second << "}";
-      cout << "}" << endl;
+      cout << "})" << endl;
 #endif
       g.add_vertex(i,map);
    }
@@ -717,7 +717,7 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    double Vertexdist = sqrt((vertex2.x - vertex1.x) * (vertex2.x - vertex1.x) + (vertex2.y - vertex1.y) * (vertex2.y - vertex1.y));
 
    /* top left point, width, height */
-   int RectOffset = 4;
+   int RectOffset = 5;
    Rect croppedRect = Rect(min(vertex1.x, vertex2.x)-RectOffset, min(vertex1.y, vertex2.y)-RectOffset, (int)(abs(vertex1.x - vertex2.x))+2*RectOffset, (int)(abs(vertex1.y-vertex2.y))+2*RectOffset);
    Mat  croppedImage = m(croppedRect);
 
@@ -795,14 +795,19 @@ bool isVertexConnected(Mat& m, Point vertex1, Point vertex2, int *distance, bool
    angleInputPts = atan(abs(gradInputPoint))* 180 / PI;
    angleHoughPts = atan (abs(gradHough))* 180 / PI;
 
-   float DistError = abs((maxDistance - RectOffset) - Vertexdist)/ Vertexdist;
-   float AngleError = abs(angleHoughPts-angleInputPts);
+   float DistError = abs((maxDistance - 3*RectOffset/2) - Vertexdist)/ Vertexdist;
+   float AngleError = abs(angleHoughPts - angleInputPts);
 
 
    float toleranceAngle, toleranceDist;
 
-   toleranceAngle = exp(-0.002*(Vertexdist-1000));
-   toleranceDist  = max((-0.0000829 * Vertexdist + 0.087), 0.01);
+   float angle_Acoef = 22.74;
+   float angle_Bcoef = -0.0622;
+   float angle_Ccoef = 5.725;
+   float angle_Dcoef = -0.009337;
+
+   toleranceAngle = (angle_Acoef *exp(angle_Bcoef * Vertexdist)) + (angle_Ccoef * exp(angle_Dcoef * Vertexdist));
+   toleranceDist  = 1.42* exp(-0.03701*Vertexdist) + 0.05 ;
 
 #if DEBUG
    cout << "__________________________________"<< endl;
@@ -953,15 +958,17 @@ CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
    inRange(hsv_image, cv::Scalar(60, 100, 100), cv::Scalar(120, 255, 255), green_hue_image);
    inRange(hsv_image, cv::Scalar(0 , 100, 100), cv::Scalar(10, 255, 255), red_hue_image);
 
-
    // Combine the above two images
    cv::addWeighted(red_hue_image, 1.0, green_hue_image, 1.0, 0.0, hue_image);
 
-   GaussianBlur(hue_image, hue_image, cv::Size(9, 9), 2, 2);
+   GaussianBlur(hue_image, hue_image, cv::Size(3, 3), 2, 2);
+
+
+
 
    /* Use the Hough transform to detect circles in the combined threshold image */
    vector<cv::Vec3f> circles;
-   HoughCircles(hue_image, circles, CV_HOUGH_GRADIENT, 1, hue_image.rows/8, 100, 20, 0, 0);
+   HoughCircles(hue_image, circles, CV_HOUGH_GRADIENT, 1, hue_image.rows/8, 100, 12, 0, 0);
 
    if((circles.size() == 0) || (circles.size() > 2))
    {
@@ -987,7 +994,7 @@ CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
             Coordinates.setStartCoord(center);
             startVertex = center;
          }
-         else if (color[1] == 255) //#TODO: FInd a better way
+         else if (color[1] == 255) //#TODO: Find a better way
          {
             /* End Point */
             sprintf(label, "%s", "End Point");
@@ -997,6 +1004,10 @@ CoordToTrack findStartEndCoord(Mat bgr_image, vector< cv::Point2f> corners)
 
          }
          else { /* pass*/}
+
+#if 0
+   imshow("hue_image", hue_image );
+#endif
 
          double minDistStart=0xFFFFFFFFF;
          double minDistEnd=0xFFFFFFFFF;
